@@ -66,6 +66,6 @@ steps:
       force: true
       ssh_key:
         from_secret: github_ssh
-#    when:
-#      event:
-#        - tag
+    when:
+      event:
+        - tag
