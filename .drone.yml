@@ -64,6 +64,7 @@ steps:
       branch: master
       remote: git@github.com:jams246/mira.git
       force: true
+      followtags: true
       ssh_key:
         from_secret: github_ssh
     when:
