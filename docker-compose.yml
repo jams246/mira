@@ -3,21 +3,18 @@ services:
   mira:
     build:
       context: ./.docker/dev
-    image: jams246/mira:0.1.0
+    image: jams246/mira:dev
     container_name: mira
     restart: "no"
     stop_grace_period: 1s
-    pid: host
-    network_mode: host
+#    pid: host #Enable this to see all host processes
     environment:
       PHP_IDE_CONFIG: serverName=Mira
-      RR_ENV: dev
-      RR_WORKDIR: /app
-      RR_WATCHER: disable
-#    ports:
-#      - "80:44356"
-#      - "24625:44357"
+      APP_ENV: dev #Set to prod and uncomment the /prod/php.ini volume to run in production mode
+    ports:
+      - "80:44356"
+      - "44357:44357" #Websocket port
     volumes:
-      - "./.docker/dev/php.ini:/usr/local/etc/php/conf.d/php.ini"
+#      - "./.docker/prod/php.ini:/usr/local/etc/php/conf.d/php.ini"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./:/app"
