@@ -39,6 +39,10 @@ kind: pipeline
 type: docker
 name: Deploy
 
+trigger:
+  event:
+    - tag
+
 depends_on:
   - Tests
   - Static analysis
@@ -54,9 +58,6 @@ steps:
       repo: jams246/mira
       tags: latest
       dockerfile: .docker/prod/Dockerfile
-    when:
-      event:
-        - tag
 
   - name: Push to github
     image: appleboy/drone-git-push:0.2.0-linux-amd64
@@ -67,6 +68,3 @@ steps:
       followtags: true
       ssh_key:
         from_secret: github_ssh
-    when:
-      event:
-        - tag
