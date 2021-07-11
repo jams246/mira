@@ -1,0 +1,58 @@
+rpc:
+  listen: tcp://127.0.0.1:6001
+
+server:
+  command: "php public/index.php"
+  relay: "unix:///tmp/rr.sock"
+  relay_timeout: 60s
+  env:
+    APP_RUNTIME: Baldinof\RoadRunnerBundle\Runtime\Runtime
+    XDEBUG_SESSION: 1
+
+http:
+  address: 0.0.0.0:44356
+  pool:
+    num_workers: 1
+    max_jobs: 0
+    debug: true
+    allocate_timeout: 5s
+    destroy_timeout: 5s
+  middleware: [ "static", "gzip" ]
+  uploads:
+    forbid: [ ".php", ".exe", ".bat" ]
+  static:
+    dir: "public"
+    forbid: [ ".php", ".htaccess" ]
+
+service:
+  websocket_server:
+    command: "bin/console ampere:start:websocket"
+    process_num: 1
+    exec_timeout: 0
+    remain_after_exit: false
+  docker:
+    command: "bin/console ampere:stats:docker"
+    process_num: 1
+    exec_timeout: 0
+    remain_after_exit: false
+
+logs:
+  channels:
+    http:
+      mode: development
+      level: error
+      encoding: console
+      output: stdout
+      err_output: stderr
+    server:
+      mode: development
+      level: info
+      encoding: console
+      output: stdout
+      err_output: stderr
+    rpc:
+      mode: development
+      level: error
+      encoding: console
+      output: stdout
+      err_output: stderr

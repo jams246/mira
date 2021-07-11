@@ -1,0 +1,55 @@
+{% block body %}
+    <div>
+        <h1>Load average</h1>
+        <span>One minute: {{ liveInfo.loadAverage.minute }}</span>
+        <br>
+        <span>Five minutes: {{ liveInfo.loadAverage.fiveMinute }}</span>
+        <br>
+        <span>Fifteen minutes: {{ liveInfo.loadAverage.fifteenMinute }}</span>
+
+        <h1>CPU</h1>
+        <span>Utilization: {{ liveInfo.cpuUtilization.utilization }}</span>
+
+        <h1>Uptime</h1>
+        <span>System uptime: {{ liveInfo.uptime.uptime }}</span>
+        <br/>
+        <span>Idle process time: {{ liveInfo.uptime.idled }}</span>
+
+        <h1>Memory</h1>
+        <span>Total memory: {{ liveInfo.memory.total }}</span>
+        <br>
+        <span>Free memory: {{ liveInfo.memory.free }}</span>
+        <br>
+        <span>Available memory: {{ liveInfo.memory.available }}</span>
+        <br>
+        <span>Buffered memory: {{ liveInfo.memory.buffers }}</span>
+        <br>
+        <span>Cached memory: {{ liveInfo.memory.cached }}</span>
+        <br>
+        <span>Used: {{ liveInfo.memory.percentageUsed }}</span>
+
+        <h1>Swap Info</h1>
+        <span>Total memory: {{ liveInfo.swapMemory.total }}</span>
+        <br>
+        <span>Free memory: {{ liveInfo.swapMemory.free }}</span>
+        <br>
+        <span>Cached memory: {{ liveInfo.swapMemory.cached }}</span>
+
+        <h1>Process list</h1>
+        {% for process in processList.arrayCopy %}
+            <p>
+                <span>PID: {{ process.pid }}</span>
+                <br/>
+                <span>Process name: {{ process.processName }}</span>
+                <br/>
+                <span>Process state: {{ process.state }}</span>
+                <br/>
+                <span>Memory usage: {{ process.memoryUsage }}</span>
+                <br/>
+                <span>Cpu usage: {{ process.cpuUsage }}</span>
+                <br/>
+                <span>Process uptime: {{ process.upTime }}</span>
+            </p>
+        {% endfor %}
+    </div>
+{% endblock %}

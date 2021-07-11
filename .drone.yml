@@ -1,0 +1,71 @@
+kind: pipeline
+type: docker
+name: Tests
+
+steps:
+  - name: Composer dev
+    image: docker-registry.home/php:8-cli
+    commands:
+      - composer install
+
+  - name: Unit tests
+    image: docker-registry.home/php:8-cli
+    commands:
+      - php bin/phpunit
+
+---
+kind: pipeline
+type: docker
+name: Static analysis
+
+steps:
+  - name: Composer dev
+    image: docker-registry.home/php:8-cli
+    commands:
+      - composer install
+
+  - name: Coding standards
+    image: oskarstark/php-cs-fixer-ga:latest
+    commands:
+      - php-cs-fixer fix --dry-run --diff
+
+  - name: PHP Stan
+    image: ghcr.io/phpstan/phpstan:latest
+    commands:
+      - phpstan
+
+---
+kind: pipeline
+type: docker
+name: Deploy
+
+depends_on:
+  - Tests
+  - Static analysis
+
+steps:
+  - name: Build and deploy to hub.docker.com
+    image: plugins/docker
+    settings:
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      repo: jams246/mira
+      tags: latest
+      dockerfile: .docker/prod/Dockerfile
+    when:
+      event:
+        - tag
+
+  - name: Push to github
+    image: appleboy/drone-git-push:0.2.0-linux-amd64
+    settings:
+      branch: master
+      remote: git@github.com:jams246/mira.git
+      force: true
+      ssh_key:
+        from_secret: github_ssh
+#    when:
+#      event:
+#        - tag

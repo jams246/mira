@@ -1,0 +1,21 @@
+{% block body %}
+    <div>
+        <h1>Hostname</h1>
+        <span>Hostname: {{ info.hostname.value }}</span>
+
+        <h1>Kernel info</h1>
+        <span>Kernel: {{ info.kernel.value }}</span>
+        <br>
+        <span>Bitversion: {{ info.bitVersion.value }}</span>
+
+        <h1>Cpu Info</h1>
+        <span>CPU Model: {{ info.cpuModelName.value }}</span>
+        <br>
+        <span>CPU Core Count: {{ info.coreCount.value }}</span>
+
+        <h1>IP Address</h1>
+        <span>Host IP Address: {{ info.hostIPAddress.value }}</span>
+        <br>
+        <span>Public IP Address: {{ info.publicIPAddress.value }}</span>
+    </div>
+{% endblock %}

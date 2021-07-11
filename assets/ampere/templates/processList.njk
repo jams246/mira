@@ -1,0 +1,10 @@
+{% for process in processes %}
+    <tr>
+        <td class="tableString">{{ process.processName }}</td>
+        <td class="tableString" data-id="State">{{ process.state }}</td>
+        <td class="tableNumeric mobileHidden" data-id="PID">{{ process.pid }}</td>
+        <td class="tableNumeric mobileHidden" data-id="CPU">{{ process.cpuUsage }}</td>
+        <td class="tableNumeric mobileHidden" data-id="MEM">{{ process.memoryUsage }}</td>
+        <td class="tableNumeric mobileHidden" data-id="Uptime">{{ process.upTime }}</td>
+    </tr>
+{% endfor %}

@@ -1,0 +1,40 @@
+@use "functions";
+
+@mixin grid-standard-columns {
+  grid-template-columns: 1fr functions.em(350) functions.em(650) 1fr;
+}
+
+@mixin grid-standard-rows {
+  grid-template-rows: functions.em(100) 1fr functions.em(80);
+}
+
+@mixin grid-column-row-start-end($columnStart, $columnEnd, $rowStart, $rowEnd) {
+  @include grid-column-start-end($columnStart, $columnEnd);
+  @include grid-row-start-end($rowStart, $rowEnd);
+}
+
+@mixin grid-column-start-end($start, $end) {
+  grid-column: #{$start} / #{$end};
+}
+
+@mixin grid-row-start-end($start, $end) {
+  grid-row: #{$start} / #{$end};
+}
+
+@mixin build-grid-columns-and-rows($columns: null, $rows: null) {
+  display: grid;
+
+  @if ($columns == null and $rows == null) {
+    @include grid-standard-columns;
+    @include grid-standard-rows;
+  } @else if ($columns == null) {
+    @include grid-standard-columns;
+    grid-template-rows: $rows;
+  } @else if ($rows == null) {
+    grid-template-columns: $columns;
+    @include grid-standard-rows;
+  } @else {
+    grid-template-columns: $columns;
+    grid-template-rows: $rows;
+  }
+}

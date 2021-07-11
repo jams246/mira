@@ -1,0 +1,25 @@
+@use "sass:math";
+
+$browser-context: 16;
+
+@function em($pixels, $context: $browser-context) {
+  @if (unitless($pixels)) {
+    $pixels: $pixels * 1px;
+  }
+
+  @if (unitless($context)) {
+    $context: $context * 1px;
+  }
+
+  @return math.div($pixels, $context) * 1em;
+}
+
+
+@mixin align($position:center) {
+  align-self: $position;
+  align-items: $position;
+  align-content: $position;
+  justify-content: $position;
+  justify-self: $position;
+  justify-items: $position;
+}

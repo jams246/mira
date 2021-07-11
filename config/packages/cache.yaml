@@ -1,0 +1,7 @@
+framework:
+    cache:
+        # Unique name of your app: used to compute stable namespaces for cache keys.
+        prefix_seed: twofoursix/mira
+
+        # service: cache.memcached
+        default_memcached_provider: 'memcached://localhost'

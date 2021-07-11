@@ -1,0 +1,102 @@
+@use "functions/functions";
+@use "functions/grid";
+
+/**
+max-width: If the width of a device is smaller than x, the styles are applied.
+min-width: If the width of a device is greater than x, the styles are applied.
+ */
+@media screen and (max-width: functions.em(649)) {
+  body {
+    grid-template-columns: 1fr ;
+    grid-template-rows:  1fr 1fr functions.em(10) functions.em(70);
+  }
+
+  .desktopHidden {
+    display: block;
+  }
+  .panelContainer {
+    border-radius:0;
+  }
+  .dataTable .mobileHidden {
+    display: none;
+  }
+
+  #appLogo {
+    @include grid.grid-column-row-start-end(1, 2, 4, 5);
+  }
+
+  #sidePanelInfo {
+    @include grid.grid-column-row-start-end(1,2,1,2);
+
+    #loadAvgChart {
+      width: functions.em(298);
+    }
+
+    #mobile_CpuMemUsage {
+      display: block;
+
+      .panelContent {
+        padding: 0;
+      }
+    }
+  }
+
+  #mainPanelInfo {
+    @include grid.grid-column-row-start-end(1,2,2,3);
+
+    #cpuUsageChartContainer, #memUsageChartContainer {
+      display: none;
+    }
+
+    .dataTable .columnInfo {
+      width:auto;
+    }
+
+    .dataTable .tableString:not(:first-of-type) {
+      text-align: right;
+    }
+  }
+}
+
+@media screen and (min-width: functions.em(650)) and (max-width: functions.em(1211)) {
+  body {
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows:  1fr 1fr functions.em(10) functions.em(70);
+  }
+
+  #appLogo {
+    @include grid.grid-column-row-start-end(1, 4, 4, 5);
+  }
+
+  #sidePanelInfo {
+    @include grid.grid-column-row-start-end(1, 4, 1, 2);
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    grid-column-gap: functions.em(10);
+
+    .panelContainer:not(:first-child) {
+      margin-top:0;
+    }
+
+    .panelContainer:first-of-type {
+      @include grid.grid-column-row-start-end(1, 4, 1, 2);
+    }
+    /* OS */
+    .panelContainer:nth-child(3) {
+      @include grid.grid-column-row-start-end(1, 2, 2, 3);
+    }
+    /* Memory */
+    .panelContainer:nth-child(4) {
+      @include grid.grid-column-row-start-end(2, 3, 2, 3);
+    }
+    /* Swap */
+    .panelContainer:nth-child(5) {
+      @include grid.grid-column-row-start-end(3, 4, 2, 3);
+    }
+  }
+
+  #mainPanelInfo {
+    @include grid.grid-column-row-start-end(1, 4, 2, 3);
+  }
+}

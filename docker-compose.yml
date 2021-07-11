@@ -1,0 +1,23 @@
+version: "3.8"
+services:
+  mira:
+    build:
+      context: ./.docker/dev
+    image: jams246/mira:0.1.0
+    container_name: mira
+    restart: "no"
+    stop_grace_period: 1s
+    pid: host
+    network_mode: host
+    environment:
+      PHP_IDE_CONFIG: serverName=Mira
+      RR_ENV: dev
+      RR_WORKDIR: /app
+      RR_WATCHER: disable
+#    ports:
+#      - "80:44356"
+#      - "24625:44357"
+    volumes:
+      - "./.docker/dev/php.ini:/usr/local/etc/php/conf.d/php.ini"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./:/app"

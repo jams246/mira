@@ -1,0 +1,8 @@
+{% for docker in dockerList %}
+    <tr>
+        <td class="tableString">{{ docker.name }}</td>
+        <td class="tableString" data-id="State">{{ docker.state }}</td>
+        <td class="tableNumeric mobileHidden" data-id="CPU">{{ docker.cpu }}</td>
+        <td class="tableNumeric mobileHidden" data-id="MEM">{{ docker.memory }}</td>
+    </tr>
+{% endfor %}

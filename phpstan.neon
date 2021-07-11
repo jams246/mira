@@ -1,0 +1,19 @@
+parameters:
+	level: max
+	paths:
+		- src
+		- tests
+	checkGenericClassInNonGenericObjectType: false
+	checkMissingIterableValueType: false
+	excludePaths:
+	    - src/Ampere/SystemInfo/Reader/Processes.php
+	ignoreErrors:
+		-
+			message: '#Access to an undefined property [a-zA-Z0-9\\_]+::\$resourceId#'
+			path: src/Websocket/LiveTopic.php
+		-
+		    message: '#Cannot access property \$[a-zA-Z0-9\\_]#'
+		    path: src/Ampere/SystemInfo/Reader/Processes.php
+		-
+		    message: '#Access to an undefined property object::+#'
+		    path: src/Ampere/SystemInfo/Reader/Memory.php

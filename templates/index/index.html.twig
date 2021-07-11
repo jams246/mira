@@ -1,0 +1,189 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <div id="appLogo">
+        <object type="image/svg+xml" data="{{ asset('build/images/ant.svg') }}"></object>
+        <span id="appName">MIRA</span>
+    </div>
+
+    <div id="sidePanelInfo">
+        <div class="panelContainer">
+            <div class="panelHeader">
+                Load avg ({{ staticInfo.coreCount.value }} core)
+                <span class="circle"
+                      data-tooltip="Load refers to the number of processes which are either currently being executed by the CPU or are waiting for execution.<br/><br/>Load average depicts the average load on a CPU for a set time interval. These values are the number of processes waiting for the CPU or using it in the given period.">?</span>
+            </div>
+            <div class="panelContent">
+                <canvas id="loadAvgChart"></canvas>
+            </div>
+        </div>
+
+        <div class="panelContainer" id="mobile_CpuMemUsage">
+            <div class="panelHeader">
+                CPU and Mem usage
+            </div>
+            <div class="panelContent">
+                <table class="dataTable">
+                    <thead>
+                    <tr>
+                        <th class="tableString columnDescription">CPU</th>
+                        <th class="tableString columnDescription">Mem</th>
+                    </tr>
+                    </thead>
+                    <tbody id="mobile_CpuMemUsageList">
+                    <tr>
+                        <td>{{ liveInfo.cpuUtilization.utilization }}%</td>
+                        <td>{{ liveInfo.memory.percentageUsed }}%</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="panelContainer">
+            <div class="panelHeader">
+                OS <span id="uptime-liveInfo">({{ liveInfo.uptime.uptime }})</span>
+            </div>
+            <div class="panelContent">
+                <span class="itemHeading">Host:</span> {{ staticInfo.hostname.value }}
+                <br/>
+                <span class="itemHeading">IP:</span> {{ staticInfo.hostIPAddress.value }}
+                &nbsp;
+                <span class="itemHeading">Public:</span> {{ staticInfo.publicIPAddress.value }}
+                <br/>
+                {{ staticInfo.kernel.value }}
+                <br/>
+                {{ staticInfo.bitVersion.value }}
+            </div>
+        </div>
+
+        <div class="panelContainer">
+            <div class="panelHeader">Memory</div>
+            <div id="memory-liveInfo" class="panelContent">
+                <span class="itemHeading">Total:</span> {{ liveInfo.memory.total }}
+                <br/>
+                <span class="itemHeading">Free:</span> {{ liveInfo.memory.free }}
+                <br/>
+                <span class="itemHeading">Available:</span> {{ liveInfo.memory.available }}
+                <br/>
+                <span class="itemHeading">Buffered:</span> {{ liveInfo.memory.buffers }}
+                <br/>
+                <span class="itemHeading">Cached:</span> {{ liveInfo.memory.cached }}
+            </div>
+        </div>
+
+        <div class="panelContainer">
+            <div class="panelHeader">Swap</div>
+            <div class="panelContent">
+                <span class="itemHeading">Total:</span> {{ liveInfo.swapMemory.total }}
+                <br/>
+                <span class="itemHeading">Free:</span> {{ liveInfo.swapMemory.free }}
+                <br/>
+                <span class="itemHeading">Cached:</span> {{ liveInfo.swapMemory.cached }}
+            </div>
+        </div>
+    </div> <!-- <div id="sidePanelInfo"> -->
+
+    <div id="mainPanelInfo">
+        <div class="panelContainer" id="cpuUsageChartContainer">
+            <div class="panelHeader">CPU ({{ staticInfo.cpuModelName.value }})</div>
+            <div class="panelContent">
+                <canvas id="cpuUsageChart"></canvas>
+            </div>
+        </div>
+
+        <div class="panelContainer" id="memUsageChartContainer">
+            <div class="panelHeader">Memory</div>
+            <div class="panelContent">
+                <canvas id="memUsageChart"></canvas>
+            </div>
+        </div>
+
+        <div class="panelContainer">
+            <div class="panelHeader">
+                Process list
+            </div>
+            <div class="panelContent">
+                <table class="dataTable">
+                    <thead>
+                    <tr>
+                        <th class="tableString columnDescription">Name</th>
+                        <th class="tableString columnInfo mobileHidden">State</th>
+                        <th class="tableNumeric columnInfo mobileHidden">PID</th>
+                        <th class="tableNumeric columnInfo mobileHidden">CPU (%)</th>
+                        <th class="tableNumeric columnInfo mobileHidden">MEM</th>
+                        <th class="tableNumeric columnInfo mobileHidden">Uptime</th>
+                        <th class="tableString columnInfo desktopHidden">
+                            <select id="processListColumnSelect">
+                                <option value="State" selected>State</option>
+                                <option value="PID">PID</option>
+                                <option value="CPU">CPU (%)</option>
+                                <option value="MEM">MEM</option>
+                                <option value="Uptime">Uptime</option>
+                            </select>
+                        </th>
+                    </tr>
+                    </thead>
+                    <tbody id="processList">
+                    {% for process in processList.arrayCopy %}
+                        <tr>
+                            <td class="tableString">{{ process.processName }}</td>
+                            <td class="tableString" data-id="State">{{ process.state }}</td>
+                            <td class="tableNumeric mobileHidden" data-id="PID">{{ process.pid }}</td>
+                            <td class="tableNumeric mobileHidden" data-id="CPU">{{ process.cpuUsage }}</td>
+                            <td class="tableNumeric mobileHidden" data-id="MEM">{{ process.memoryUsage }}</td>
+                            <td class="tableNumeric mobileHidden" data-id="Uptime">{{ process.upTime }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="panelContainer">
+            <div class="panelHeader">
+                Docker containers
+            </div>
+            <div class="panelContent">
+                <table class="dataTable">
+                    <thead>
+                    <tr>
+                        <th class="tableString columnDescription">Name</th>
+                        <th class="tableString columnInfo mobileHidden">State</th>
+                        <th class="tableNumeric columnInfo mobileHidden">CPU (%)</th>
+                        <th class="tableNumeric columnInfo mobileHidden">MEM</th>
+                        <th class="tableString columnInfo desktopHidden">
+                            <select id="dockerListColumnSelect">
+                                <option value="State" selected>State</option>
+                                <option value="CPU">CPU (%)</option>
+                                <option value="MEM">MEM</option>
+                            </select>
+                        </th>
+                    </tr>
+                    </thead>
+                    <tbody id="dockerList">
+                    {% for docker in dockerList.arrayCopy %}
+                        <tr>
+                            <td class="tableString">{{ docker.name }}</td>
+                            <td class="tableString" data-id="State">{{ docker.state }}</td>
+                            <td class="tableNumeric mobileHidden" data-id="CPU">{{ docker.cpu }}</td>
+                            <td class="tableNumeric mobileHidden" data-id="MEM">{{ docker.memory }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div> <!-- <div id="mainPanelInfo"> -->
+
+    <script>
+        let initialReadings = {
+            loadAvgReadings: {
+                minute: {{ liveInfo.loadAverage.minute }},
+                fiveMinute: {{ liveInfo.loadAverage.fiveMinute }},
+                fifteenMinute: {{ liveInfo.loadAverage.fifteenMinute }}
+            },
+            coreCount: {{ staticInfo.coreCount.value }}
+        };
+    </script>
+{% endblock %}

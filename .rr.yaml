@@ -1,0 +1,40 @@
+server:
+  command: "php public/index.php"
+  relay: "unix:///tmp/rr.sock"
+  relay_timeout: 60s
+  env:
+    APP_RUNTIME: Baldinof\RoadRunnerBundle\Runtime\Runtime
+
+http:
+  address: 0.0.0.0:44356
+  pool:
+    num_workers: 1
+    max_jobs: 0
+    debug: false
+    allocate_timeout: 60s
+    destroy_timeout: 60s
+  middleware: [ "static", "gzip" ]
+  uploads:
+    forbid: [ ".php", ".exe", ".bat" ]
+  static:
+    dir: "public"
+    forbid: [ ".php", ".htaccess" ]
+
+service:
+  websocket_server:
+    command: "bin/console ampere:start:websocket"
+    process_num: 1
+    exec_timeout: 0
+    remain_after_exit: false
+  docker:
+    command: "bin/console ampere:stats:docker"
+    process_num: 1
+    exec_timeout: 0
+    remain_after_exit: false
+
+logs:
+  mode: production
+  level: panic
+  encoding: console
+  output: stderr
+  err_output: stderr
