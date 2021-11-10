@@ -10,7 +10,7 @@ RUN apk update && \
     docker-php-ext-enable xdebug && \
     apk del --purge icu-dev libzip-dev $PHPIZE_DEPS
 
-COPY --from=spiralscout/roadrunner:2.3.1 /usr/bin/rr /usr/bin/rr
+COPY --from=spiralscout/roadrunner:2.5.6 /usr/bin/rr /usr/bin/rr
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
