@@ -27,6 +27,7 @@ class CpuUtilization implements IReader
     {
         $cpuReadings = $this->cache->getItem('cpu.utilization');
         if ($cpuReadings->isHit()) {
+            /* @phpstan-ignore-next-line */
             $this->readTimes = $this->serializer->deserialize(
                 $cpuReadings->get(),
                 CpuUtilizationReadtimeValueObject::class,

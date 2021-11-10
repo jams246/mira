@@ -21,6 +21,7 @@ class Docker implements IReader
             $response = $dockerList->get();
         }
 
+        /* @phpstan-ignore-next-line */
         return $response;
     }
 

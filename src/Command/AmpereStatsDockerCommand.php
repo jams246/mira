@@ -25,6 +25,7 @@ class AmpereStatsDockerCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        /* @phpstan-ignore-next-line */
         while (true) {
             $containerList = $this->client->dispatchCommand('/containers/json');
 
