@@ -64,7 +64,7 @@ class PublicIPAddress implements IReader
         }
     }
 
-    public function parse(string $fileContents): array | object | string
+    public function parse(string $fileContents): array|object|string
     {
         return '';
     }

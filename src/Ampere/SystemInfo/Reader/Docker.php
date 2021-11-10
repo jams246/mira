@@ -24,7 +24,7 @@ class Docker implements IReader
         return $response;
     }
 
-    public function parse(string $fileContents): array | object | string
+    public function parse(string $fileContents): array|object|string
     {
         return '';
     }

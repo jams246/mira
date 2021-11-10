@@ -29,7 +29,7 @@ class Uptime implements IReader
         return new UptimeValueObject($uptime, $idleTime);
     }
 
-    public function parse(string $fileContents): array | object | string
+    public function parse(string $fileContents): array|object|string
     {
         return '';
     }

@@ -43,7 +43,7 @@ class Memory implements IReader
         );
     }
 
-    public function parse(string $fileContents): array | object | string
+    public function parse(string $fileContents): array|object|string
     {
         \preg_match_all('/^([^:]+)\:\s+(\d+)/m', $fileContents, $matches);
 

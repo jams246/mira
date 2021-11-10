@@ -168,7 +168,7 @@ class Processes implements IReader
         return (int) $data[0];
     }
 
-    public function parse(string $fileContents): array | object | string
+    public function parse(string $fileContents): array|object|string
     {
         \preg_match_all('/^([^:]+)\:\s+(.*)/m', $fileContents, $matches);
 

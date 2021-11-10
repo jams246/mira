@@ -31,7 +31,7 @@ class Hostname implements IReader
         return new HostnameValueObject($hostname);
     }
 
-    public function parse(string $fileContents): array | object | string
+    public function parse(string $fileContents): array|object|string
     {
         return \str_replace(["\r", "\n"], '', $fileContents);
     }

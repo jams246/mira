@@ -33,7 +33,7 @@ class Kernel implements IReader
         return new KernelValueObject($kernel);
     }
 
-    public function parse(string $fileContents): array | object | string
+    public function parse(string $fileContents): array|object|string
     {
         \preg_match_all('/ /', $fileContents, $matches, PREG_OFFSET_CAPTURE);
 

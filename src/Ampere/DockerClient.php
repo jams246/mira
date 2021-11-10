@@ -11,7 +11,7 @@ use CurlHandle;
  */
 class DockerClient
 {
-    private false | CurlHandle $curlClient;
+    private false|CurlHandle $curlClient;
 
     public function __construct()
     {
