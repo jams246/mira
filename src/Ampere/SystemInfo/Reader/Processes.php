@@ -16,18 +16,21 @@ use Symfony\Component\Process\Process;
 class Processes implements IReader
 {
     private int $clockTicks = 100;
+    private int $cpuCoreCount;
 
     private const PROC_PATH = '/proc';
 
     private array $groupCount = ['R (running)' => 0, 'S (sleeping)' => 0, 'I (idle)' => 0, 'D (disk sleep)' => 0];
 
-    public function __construct(private AdapterInterface $cache)
+    public function __construct(private AdapterInterface $cache, private CpuCoreCount $coreCountReader)
     {
         $process = new Process(['getconf', 'CLK_TCK']);
         $process->run();
         if ($process->isSuccessful()) {
             $this->clockTicks = (int) $process->getOutput();
         }
+
+        $this->cpuCoreCount = $this->coreCountReader->read()->getValue();
     }
 
     public function read(): \ArrayObject
@@ -141,7 +144,7 @@ class Processes implements IReader
         $data = \explode(' ', $data);
         $totalProcessTime = (float) $data[13] + (float) $data[14];
 
-        $cpuUsage = 6 * ($totalProcessTime - $stats[1]) * 100 / (float) ($totalCpuUsage - $stats[0]);
+        $cpuUsage = $this->cpuCoreCount * ($totalProcessTime - $stats[1]) * 100 / (float) ($totalCpuUsage - $stats[0]);
         $cpuUsage = \round($cpuUsage, 1);
         /*
          * The cpuUsage value can be under 0 when trying to access the server
