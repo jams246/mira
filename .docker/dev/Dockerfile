@@ -19,6 +19,5 @@ EXPOSE 44356
 EXPOSE 44357
 
 COPY php.ini /usr/local/etc/php/conf.d/php.ini
-COPY entrypoint.sh /entrypoint.sh
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["rr", "--debug", "--WorkDir", "/app", "--config", "/app/.rr.dev.yaml", "serve"]

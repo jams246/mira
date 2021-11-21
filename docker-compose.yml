@@ -10,11 +10,9 @@ services:
 #    pid: host #Enable this to see all host processes
     environment:
       PHP_IDE_CONFIG: serverName=Mira
-      APP_ENV: dev #Set to prod and uncomment the /prod/php.ini volume to run in production mode
     ports:
       - "80:44356"
       - "44357:44357" #Websocket port
     volumes:
-#      - "./.docker/prod/php.ini:/usr/local/etc/php/conf.d/php.ini"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./:/app"
