@@ -9,7 +9,7 @@ class PublicIPAddress implements IReader
 {
     private string $ipAddress = 'Unknown';
 
-    private const IP_ADDRESS_WEBSITES = [
+    private const IP_ADDRESS_URL = [
         'checkip.amazonaws.com',
         'ifconfig.me',
         'icanhazip.com',
@@ -54,7 +54,7 @@ class PublicIPAddress implements IReader
 
     private function tryCurl(): void
     {
-        foreach (self::IP_ADDRESS_WEBSITES as $address) {
+        foreach (self::IP_ADDRESS_URL as $address) {
             $process = new Process(['curl', $address]);
             $process->run();
             if ($process->isSuccessful()) {
