@@ -4,12 +4,12 @@ name: Tests
 
 steps:
   - name: Composer dev
-    image: docker-registry.home/php:8-cli
+    image: docker-registry.home/php/8/cli:latest
     commands:
       - composer install
 
   - name: Unit tests
-    image: docker-registry.home/php:8-cli
+    image: docker-registry.home/php/8/cli:latest
     commands:
       - php bin/phpunit
 
@@ -20,7 +20,7 @@ name: Static analysis
 
 steps:
   - name: Composer dev
-    image: docker-registry.home/php:8-cli
+    image: docker-registry.home/php/8/cli:latest
     commands:
       - composer install
 
