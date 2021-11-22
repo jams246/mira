@@ -29,8 +29,8 @@ class ThreeSeconds extends BaseLive
         }
         $liveInfoDto->setProcessList($formattedProcessList);
 
-        if (isset($this->docker)) {
-            $dockerList = (array) $this->docker->read();
+        $dockerList = (array) $this->docker->read();
+        if (0 != \count($dockerList)) {
             $formattedDockerList = new \ArrayObject();
             foreach ($dockerList as $docker) {
                 $formattedDocker = new \stdClass();
