@@ -16,19 +16,27 @@ class Disk implements IReader
         $diskDetails = new \ArrayObject();
         $process = Process::fromShellCommandline("df | grep '^/dev/*'");
         $process->run();
+
+        $result = [];
         if ($process->isSuccessful()) {
             $result = $this->parse($process->getOutput());
         }
 
-        foreach ($result as $item) {
-            $diskDetails->append(new DiskDetailsValueObject(
-                $item['device'],
-                $item['used'] + $item['available'],
-                $item['used'],
-                $item['available'],
-                $item['percentage'],
-                $item['mounted_at']
-            ));
+        /* @phpstan-ignore-next-line */
+        if (0 != \count($result)) {
+            /* @phpstan-ignore-next-line */
+            foreach ($result as $item) {
+                $diskDetails->append(
+                    new DiskDetailsValueObject(
+                        $item['device'],
+                        $item['used'] + $item['available'],
+                        $item['used'],
+                        $item['available'],
+                        $item['percentage'],
+                        $item['mounted_at']
+                    )
+                );
+            }
         }
 
         return $diskDetails;
