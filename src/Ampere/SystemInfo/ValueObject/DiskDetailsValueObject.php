@@ -9,8 +9,7 @@ class DiskDetailsValueObject
         private int $total,
         private int $used,
         private int $available,
-        private string $percentageUsed,
-        private string $mountedAt
+        private string $percentageUsed
     ) {
     }
 
@@ -37,10 +36,5 @@ class DiskDetailsValueObject
     public function getPercentageUsed(): string
     {
         return $this->percentageUsed;
-    }
-
-    public function getMountedAt(): string
-    {
-        return $this->mountedAt;
     }
 }

@@ -32,8 +32,7 @@ class Disk implements IReader
                         $item['used'] + $item['available'],
                         $item['used'],
                         $item['available'],
-                        $item['percentage'],
-                        $item['mounted_at']
+                        $item['percentage']
                     )
                 );
             }
@@ -54,7 +53,6 @@ class Disk implements IReader
                 'used' => $details[2],
                 'available' => $details[3],
                 'percentage' => $details[4],
-                'mounted_at' => $details[5],
             ];
         }
 
