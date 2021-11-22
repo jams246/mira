@@ -6,6 +6,8 @@ use App\Ampere\SystemInfo\Dto\LiveInfoDto;
 
 class ThreeSeconds extends BaseLive
 {
+    private const DATE_FORMAT = ['short' => true, 'join' => false, 'parts' => 2];
+
     public function getDto(): LiveInfoDto
     {
         $liveInfoDto = new LiveInfoDto();
@@ -19,7 +21,9 @@ class ThreeSeconds extends BaseLive
             $formattedProcess->memoryUsage = \ByteUnits\Metric::kilobytes($process->getMemoryUsage())->format();
             $formattedProcess->state = $process->getState();
             $formattedProcess->cpuUsage = $process->getCpuUsage();
-            $formattedProcess->upTime = \Carbon\CarbonInterval::seconds($process->getUpTime())->cascade()->forHumans(['short' => true]);
+            $formattedProcess->upTime = \Carbon\CarbonInterval::seconds($process->getUpTime())->cascade()->forHumans(
+                self::DATE_FORMAT
+            );
 
             $formattedProcessList->append($formattedProcess);
         }
@@ -50,7 +54,6 @@ class ThreeSeconds extends BaseLive
             $formattedDisk->used = \ByteUnits\Metric::kilobytes($disk->getUsed())->format();
             $formattedDisk->available = \ByteUnits\Metric::kilobytes($disk->getAvailable())->format();
             $formattedDisk->percentageUsed = $disk->getPercentageUsed();
-            $formattedDisk->mountedAt = $disk->getMountedAt();
 
             $formattedDiskList->append($formattedDisk);
         }
