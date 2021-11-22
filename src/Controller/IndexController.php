@@ -39,7 +39,7 @@ class IndexController extends AbstractController
         return $this->render('index/dynamic_info.html.twig', [
             'liveInfo' => $oneSecond->getDto(),
             'processList' => $expensive->getProcessList(),
-            'diskList' => $expensive->getDiskList()
+            'diskList' => $expensive->getDiskList(),
         ]);
     }
 }

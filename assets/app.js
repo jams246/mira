@@ -15,10 +15,15 @@ import LiveInfo from "./ampere/functions/LiveInfo";
     loadAvgChart.addChartData(initialReadings.loadAvgReadings).updateChart();
     initialReadings = null;
 
+    let dockerListElement = document.getElementById('dockerList') || null;
+
     new ListColumn('#processList')
         .attachListener(document.getElementById('processListColumnSelect'));
-    new ListColumn('#dockerList')
-        .attachListener(document.getElementById('dockerListColumnSelect'));
+
+    if (dockerListElement) {
+        new ListColumn('#dockerList')
+            .attachListener(document.getElementById('dockerListColumnSelect'));
+    }
 
     const cpuUtilizationChart = new UsageChart(document.getElementById('cpuUsageChart').getContext('2d'));
     const memUsageChart = new UsageChart(document.getElementById('memUsageChart').getContext('2d'));
@@ -27,7 +32,7 @@ import LiveInfo from "./ampere/functions/LiveInfo";
         document.getElementById('uptime-liveInfo'),
         document.getElementById('memory-liveInfo'),
         document.getElementById('processList'),
-        document.getElementById('dockerList'),
+        dockerListElement,
         document.getElementById('mobile_CpuMemUsageList'),
         document.getElementById('diskList'),
         cpuUtilizationChart,

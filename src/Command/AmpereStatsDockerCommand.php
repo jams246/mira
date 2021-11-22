@@ -5,6 +5,7 @@ namespace App\Command;
 use App\Ampere\DockerClient;
 use App\Ampere\SystemInfo\ValueObject\DockerProcessValueObject;
 use App\Ampere\SystemInfo\ValueObject\Exception\ValueObjectException;
+use Psr\Cache\InvalidArgumentException;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -25,6 +26,15 @@ class AmpereStatsDockerCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        if (!\file_exists('/var/run/docker.sock:ro')) {
+            try {
+                $this->cache->deleteItem('docker.list');
+            } catch (\Exception|InvalidArgumentException $e) {
+            }
+
+            return 0;
+        }
+
         /* @phpstan-ignore-next-line */
         while (true) {
             $containerList = $this->client->dispatchCommand('/containers/json');

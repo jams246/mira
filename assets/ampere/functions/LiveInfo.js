@@ -21,6 +21,8 @@ export default class LiveInfo {
         this.memUsageChart = memUsageChart;
         this.loadAvgChart = loadAvgChart;
         this.notyf = notyf;
+
+        console.log('->' + dockerListInfo);
     }
 
 
@@ -129,9 +131,11 @@ export default class LiveInfo {
         let selectedValue = document.getElementById('processListColumnSelect').value;
         new ListColumn('#processList').updateDataTable(selectedValue);
 
-        this.dockerListInfo.innerHTML = dockerListTmpl({dockerList: dockerList});
-        selectedValue = document.getElementById('dockerListColumnSelect').value;
-        new ListColumn('#dockerList').updateDataTable(selectedValue);
+        if (this.dockerListInfo) {
+            this.dockerListInfo.innerHTML = dockerListTmpl({dockerList: dockerList});
+            selectedValue = document.getElementById('dockerListColumnSelect').value;
+            new ListColumn('#dockerList').updateDataTable(selectedValue);
+        }
 
         this.diskListInfo.innerHTML = diskListTmpl({diskList: diskList});
     }
