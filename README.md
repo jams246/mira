@@ -47,10 +47,25 @@ services:
     pid: host # Required to show host system processes and not the containers processes.
     network_mode: host
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro" # Required to show docker containers 
+      - "/var/run/docker.sock:/var/run/docker.sock:ro" # [OPTIONAL] Show docker containers 
 ```
-
 Visit your server on port `44356` using your favourite browser, and you should see the UI update.
+
+If you want to change the port of the container, define the ports in the `docker-compose.yml` file
+
+```yaml
+version: "3.8"
+services:
+  mira:
+    image: jams246/mira
+    container_name: mira
+    pid: host # Required to show host system processes and not the containers processes.
+    ports:
+      - "<your desired port>:44356"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro" # [OPTIONAL] Show docker containers
+```
+Visit your server on port `<your desired port>` using your favourite browser, and you should see the UI update.
 
 ### Limitations
 
@@ -61,7 +76,6 @@ Visit your server on port `44356` using your favourite browser, and you should s
 * HDD temperature readings.
 * Network traffic
 * Disk IO
-* Docker containers as optional
 * Disable websocket
 * Enable debugging
 
