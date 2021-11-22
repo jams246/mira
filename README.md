@@ -16,7 +16,7 @@
 
 Mira is a tool built to serve a requirement where you can view your headless server's current resource usage but 
 without all the additional information found from other applications such as top or htop. 
-Mira keeps its 3rd party application dependencies low by reading data from the `/proc` folders.
+Mira keeps its 3rd party application dependencies low by reading data from the `/proc` and `/sys` directories (where possible).
 
 Mira aims to be lightweight, fast, and most importantly simple. The WebUI only shows the information that you may be 
 interested in such as CPU and Memory usage, running processes and even your docker containers. Updates are delivered 
