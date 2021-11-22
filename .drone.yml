@@ -59,12 +59,12 @@ steps:
       tags: latest
       dockerfile: .docker/prod/Dockerfile
 
-#  - name: Push to github
-#    image: appleboy/drone-git-push:0.2.0-linux-amd64
-#    settings:
-#      branch: master
-#      remote: git@github.com:jams246/mira.git
-#      force: true
-#      followtags: true
-#      ssh_key:
-#        from_secret: github_ssh
+  - name: Push to github
+    image: appleboy/drone-git-push:0.2.0-linux-amd64
+    settings:
+      branch: master
+      remote: git@github.com:jams246/mira.git
+      force: true
+      followtags: true
+      ssh_key:
+        from_secret: github_ssh
