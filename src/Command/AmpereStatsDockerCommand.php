@@ -18,6 +18,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class AmpereStatsDockerCommand extends Command
 {
+    private const DOCKER_SOCK_PATH = '/var/run/docker.sock';
+
     public function __construct(private AdapterInterface $cache, private DockerClient $client)
     {
         $this->setProcessTitle('Mira');
@@ -26,7 +28,7 @@ class AmpereStatsDockerCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        if (!\file_exists('/var/run/docker.sock:ro')) {
+        if (!\file_exists(self::DOCKER_SOCK_PATH)) {
             try {
                 $this->cache->deleteItem('docker.list');
             } catch (\Exception|InvalidArgumentException $e) {
