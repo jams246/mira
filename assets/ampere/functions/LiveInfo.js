@@ -4,17 +4,19 @@ import mobile_CpuMemUsageTmpl from "../templates/mobileCpuMemUsage.njk";
 import processListTmpl from "../templates/processList.njk";
 import dockerListTmpl from "../templates/dockerList.njk";
 import ListColumn from "./ListColumn";
+import diskListTmpl from "../templates/diskList.njk";
 
 export default class LiveInfo {
     wsReconnectAttempts = 0;
     fetchRequestAttempts = 0;
 
-    constructor(uptimeLiveInfo, memoryLiveInfo, processListInfo, dockerListInfo, mobile_CpuMemUsage, cpuUtilizationChart, memUsageChart, loadAvgChart, notyf) {
+    constructor(uptimeLiveInfo, memoryLiveInfo, processListInfo, dockerListInfo, mobile_CpuMemUsage, distListInfo, cpuUtilizationChart, memUsageChart, loadAvgChart, notyf) {
         this.uptimeLiveInfo = uptimeLiveInfo;
         this.memoryLiveInfo = memoryLiveInfo;
         this.processListInfo = processListInfo;
         this.dockerListInfo = dockerListInfo;
         this.mobile_CpuMemUsage = mobile_CpuMemUsage;
+        this.diskListInfo = distListInfo;
         this.cpuUtilizationChart = cpuUtilizationChart;
         this.memUsageChart = memUsageChart;
         this.loadAvgChart = loadAvgChart;
@@ -48,7 +50,11 @@ export default class LiveInfo {
                     break;
 
                 case "ThreeSeconds":
-                    self.updateThreeSeconds(liveData.data.processList, liveData.data.dockerList);
+                    self.updateThreeSeconds(
+                        liveData.data.processList,
+                        liveData.data.dockerList,
+                        liveData.data.diskList
+                    );
                     break;
             }
         };
@@ -92,7 +98,7 @@ export default class LiveInfo {
         this.threeSecond = setInterval(function () {
             fetch('/three-second')
                 .then(response => response.json())
-                .then(data => self.updateThreeSeconds(data.processList, data.dockerList)
+                .then(data => self.updateThreeSeconds(data.processList, data.dockerList, data.diskList)
                 ).catch(function () {
                     self.handleFetchErrors()
             });
@@ -118,7 +124,7 @@ export default class LiveInfo {
         this.mobile_CpuMemUsage.innerHTML = mobile_CpuMemUsageTmpl({cpu: cpuUtilization, mem: memoryPercentage})
     }
 
-    updateThreeSeconds(processList, dockerList) {
+    updateThreeSeconds(processList, dockerList, diskList) {
         this.processListInfo.innerHTML = processListTmpl({processes: processList});
         let selectedValue = document.getElementById('processListColumnSelect').value;
         new ListColumn('#processList').updateDataTable(selectedValue);
@@ -126,6 +132,8 @@ export default class LiveInfo {
         this.dockerListInfo.innerHTML = dockerListTmpl({dockerList: dockerList});
         selectedValue = document.getElementById('dockerListColumnSelect').value;
         new ListColumn('#dockerList').updateDataTable(selectedValue);
+
+        this.diskListInfo.innerHTML = diskListTmpl({diskList: diskList});
     }
 
 }

@@ -14,6 +14,7 @@ class LiveInfoDto
     private ?object $swapMemory = null;
     private ?object $uptime = null;
     private ?\ArrayObject $dockerList = null;
+    private ?\ArrayObject $diskList = null;
 
     public function getCpuUtilization(): ?CpuUtilizationValueObject
     {
@@ -95,6 +96,18 @@ class LiveInfoDto
     public function setDockerList(?\ArrayObject $dockerList): LiveInfoDto
     {
         $this->dockerList = $dockerList;
+
+        return $this;
+    }
+
+    public function getDiskList(): ?\ArrayObject
+    {
+        return $this->diskList;
+    }
+
+    public function setDiskList(?\ArrayObject $diskList): LiveInfoDto
+    {
+        $this->diskList = $diskList;
 
         return $this;
     }

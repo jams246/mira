@@ -28,6 +28,15 @@
         <br>
         <span>Used: {{ liveInfo.memory.percentageUsed }}</span>
 
+        {% for disk in diskList %}
+            <h1>Disk space</h1>
+            <span>Total: 11</span>
+            <br>
+            <span>Free: 22</span>
+            <br>
+            <span>Used: 33</span>
+        {% endfor %}
+
         <h1>Swap Info</h1>
         <span>Total memory: {{ liveInfo.swapMemory.total }}</span>
         <br>

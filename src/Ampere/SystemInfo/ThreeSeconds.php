@@ -41,6 +41,21 @@ class ThreeSeconds extends BaseLive
             $liveInfoDto->setDockerList($formattedDockerList);
         }
 
+        $diskList = $this->disk->read();
+        $formattedDiskList = new \ArrayObject();
+        foreach ($diskList as $disk) {
+            $formattedDisk = new \stdClass();
+            $formattedDisk->device = $disk->getDevice();
+            $formattedDisk->total = \ByteUnits\Metric::kilobytes($disk->getTotal())->format();
+            $formattedDisk->used = \ByteUnits\Metric::kilobytes($disk->getUsed())->format();
+            $formattedDisk->available = \ByteUnits\Metric::kilobytes($disk->getAvailable())->format();
+            $formattedDisk->percentageUsed = $disk->getPercentageUsed();
+            $formattedDisk->mountedAt = $disk->getMountedAt();
+
+            $formattedDiskList->append($formattedDisk);
+        }
+        $liveInfoDto->setDiskList($formattedDiskList);
+
         return $liveInfoDto;
     }
 }

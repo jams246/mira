@@ -21,6 +21,7 @@ class IndexController extends AbstractController
             'liveInfo' => $oneSecond->getDto(),
             'processList' => $expensive->getProcessList(),
             'dockerList' => $expensive->getDockerList(),
+            'diskList' => $expensive->getDiskList(),
         ]);
     }
 
@@ -30,12 +31,15 @@ class IndexController extends AbstractController
         return $this->render('index/static_info.html.twig', ['info' => $staticInfo->getDto()]);
     }
 
-    #[Route('/mutable-info', name: 'mutable')]
+    #[Route('/dynamic-info', name: 'mutable')]
     public function dynamicInfo(OneSecond $oneSecond, ThreeSeconds $threeSeconds): Response
     {
-        return $this->render('index/mutable_info.html.twig', [
+        $expensive = $threeSeconds->getDto();
+
+        return $this->render('index/dynamic_info.html.twig', [
             'liveInfo' => $oneSecond->getDto(),
-            'processList' => $threeSeconds->getDto()->getProcessList(),
+            'processList' => $expensive->getProcessList(),
+            'diskList' => $expensive->getDiskList()
         ]);
     }
 }

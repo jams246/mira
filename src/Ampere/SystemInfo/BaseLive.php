@@ -3,6 +3,7 @@
 namespace App\Ampere\SystemInfo;
 
 use App\Ampere\SystemInfo\Reader\CpuUtilization;
+use App\Ampere\SystemInfo\Reader\Disk;
 use App\Ampere\SystemInfo\Reader\Docker;
 use App\Ampere\SystemInfo\Reader\LoadAverage;
 use App\Ampere\SystemInfo\Reader\Memory;
@@ -19,7 +20,8 @@ abstract class BaseLive
         protected Processes $processes,
         protected SwapMemory $swapMemory,
         protected Uptime $uptime,
-        protected Docker $docker
+        protected Docker $docker,
+        protected Disk $disk
     ) {
     }
 }

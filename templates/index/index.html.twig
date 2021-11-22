@@ -72,6 +72,23 @@
             </div>
         </div>
 
+        <div id="diskList" style="margin-top: 10px">
+        {% for disk in diskList %}
+            <div class="panelContainer">
+                <div class="panelHeader">{{ disk.device }} ({{ disk.percentageUsed }})</div>
+                <div id="memory-liveInfo" class="panelContent">
+                    <span class="itemHeading">Total:</span> {{ disk.total }}
+                    <br/>
+                    <span class="itemHeading">Used:</span> {{ disk.used }}
+                    <br/>
+                    <span class="itemHeading">Available:</span> {{ disk.available }}
+                    <br/>
+                    <span class="itemHeading">Mount:</span> {{ disk.mountedAt }}
+                </div>
+            </div>
+        {% endfor %}
+        </div>
+
         <div class="panelContainer">
             <div class="panelHeader">Swap</div>
             <div class="panelContent">

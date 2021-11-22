@@ -8,6 +8,8 @@ use App\Ampere\SystemInfo\Dto\LiveInfoDto;
 
 class OneSecond extends BaseLive
 {
+    private const DATE_FORMAT = ['short' => true, 'join' => true, 'parts' => 3];
+
     public function getDto(): LiveInfoDto
     {
         $memory = $this->memory->read();
@@ -28,8 +30,12 @@ class OneSecond extends BaseLive
 
         $uptime = $this->uptime->read();
         $formattedUptime = new \stdClass();
-        $formattedUptime->uptime = \Carbon\CarbonInterval::seconds($uptime->getUptime())->cascade()->forHumans(['short' => true]);
-        $formattedUptime->idled = \Carbon\CarbonInterval::seconds($uptime->getIdled())->cascade()->forHumans(['short' => true]);
+        $formattedUptime->uptime = \Carbon\CarbonInterval::seconds($uptime->getUptime())->cascade()->forHumans(
+            self::DATE_FORMAT
+        );
+        $formattedUptime->idled = \Carbon\CarbonInterval::seconds($uptime->getIdled())->cascade()->forHumans(
+            self::DATE_FORMAT
+        );
 
         return (new LiveInfoDto())
             ->setCpuUtilization($this->cpuUtilization->read())

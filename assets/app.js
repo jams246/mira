@@ -29,6 +29,7 @@ import LiveInfo from "./ampere/functions/LiveInfo";
         document.getElementById('processList'),
         document.getElementById('dockerList'),
         document.getElementById('mobile_CpuMemUsageList'),
+        document.getElementById('diskList'),
         cpuUtilizationChart,
         memUsageChart,
         loadAvgChart,
