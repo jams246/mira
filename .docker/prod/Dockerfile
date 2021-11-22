@@ -15,7 +15,7 @@ RUN composer install --no-dev --classmap-authoritative && \
     composer dump-env prod && \
     bin/console cache:clear ; bin/console cache:warmup && \
     yarn install --pure-lockfile --non-interactive ; yarn build && \
-    rm -rf assets/ node_modules/ .docker/ .dockerignore .env composer.json composer.lock package.json symfony.lock webpack.config.js yarn.lock
+    rm -rf assets/ node_modules/ .docker/ .env .dockerignore
 
 EXPOSE 44356
 EXPOSE 44357
