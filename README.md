@@ -62,6 +62,7 @@ services:
     pid: host # Required to show host system processes and not the containers processes.
     ports:
       - "<your desired port>:44356"
+      - "44357:44357" #Websocket port
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro" # [OPTIONAL] Show docker containers
 ```
