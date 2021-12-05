@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Ampere\SystemInfo\Reader;
 
-use Symfony\Component\Cache\Adapter\AdapterInterface;
+use Psr\Cache\CacheItemPoolInterface;
 
 class Docker implements IReader
 {
-    public function __construct(private AdapterInterface $cache)
+    public function __construct(private CacheItemPoolInterface $cache)
     {
     }
 

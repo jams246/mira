@@ -5,8 +5,8 @@ namespace App\Command;
 use App\Ampere\DockerClient;
 use App\Ampere\SystemInfo\ValueObject\DockerProcessValueObject;
 use App\Ampere\SystemInfo\ValueObject\Exception\ValueObjectException;
+use Psr\Cache\CacheItemPoolInterface;
 use Psr\Cache\InvalidArgumentException;
-use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -20,7 +20,7 @@ class AmpereStatsDockerCommand extends Command
 {
     private const DOCKER_SOCK_PATH = '/var/run/docker.sock';
 
-    public function __construct(private AdapterInterface $cache, private DockerClient $client)
+    public function __construct(private CacheItemPoolInterface $cache, private DockerClient $client)
     {
         $this->setProcessTitle('Mira');
         parent::__construct();

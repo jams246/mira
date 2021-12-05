@@ -6,7 +6,7 @@ namespace App\Ampere\SystemInfo\Reader;
 
 use App\Ampere\SystemInfo\ValueObject\CpuUtilizationReadtimeValueObject;
 use App\Ampere\SystemInfo\ValueObject\CpuUtilizationValueObject;
-use Symfony\Component\Cache\Adapter\AdapterInterface;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 
 class CpuUtilization implements IReader
@@ -18,7 +18,7 @@ class CpuUtilization implements IReader
     /**
      * CpuUtilization constructor.
      */
-    public function __construct(private AdapterInterface $cache, private SerializerInterface $serializer)
+    public function __construct(private CacheItemPoolInterface $cache, private SerializerInterface $serializer)
     {
         $this->readTimes = new CpuUtilizationReadtimeValueObject(0.0, 0.0);
     }

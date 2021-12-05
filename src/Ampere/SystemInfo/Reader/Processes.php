@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Ampere\SystemInfo\Reader;
 
 use App\Ampere\SystemInfo\ValueObject\ProcessInfoValueObject;
-use Symfony\Component\Cache\Adapter\AdapterInterface;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Finder\SplFileInfo;
 use Symfony\Component\Process\Process;
@@ -22,7 +22,7 @@ class Processes implements IReader
 
     private array $groupCount = ['R (running)' => 0, 'S (sleeping)' => 0, 'I (idle)' => 0, 'D (disk sleep)' => 0];
 
-    public function __construct(private AdapterInterface $cache, private CpuCoreCount $coreCountReader)
+    public function __construct(private CacheItemPoolInterface $cache, private CpuCoreCount $coreCountReader)
     {
         $process = new Process(['getconf', 'CLK_TCK']);
         $process->run();
