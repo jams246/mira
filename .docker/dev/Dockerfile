@@ -1,4 +1,4 @@
-FROM php:8-cli-alpine
+FROM php:8.1-cli-alpine
 
 RUN apk update && \
     # Keeping these.
@@ -10,7 +10,7 @@ RUN apk update && \
     docker-php-ext-enable xdebug && \
     apk del --purge icu-dev libzip-dev $PHPIZE_DEPS
 
-COPY --from=spiralscout/roadrunner:2.5.6 /usr/bin/rr /usr/bin/rr
+COPY --from=spiralscout/roadrunner:2.6.3 /usr/bin/rr /usr/bin/rr
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
