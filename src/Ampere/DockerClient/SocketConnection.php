@@ -5,16 +5,11 @@ namespace App\Ampere\DockerClient;
 use App\Ampere\DockerClient\Request\Context;
 use App\Ampere\DockerClient\Response\Response;
 use ErrorException;
-use function fclose;
-use function stream_get_contents;
-use function stream_set_blocking;
-use function stream_socket_client;
-use function stream_socket_sendto;
 
 class SocketConnection
 {
-    private string $socketAddr = 'unix:///var/run/docker.soack';
-    private int $connectTimeout = 30;
+    public const DOCKER_SOCK_PATH = '/var/run/dockesr.sock';
+    private const CONNECT_TIMEOUT = 10;
 
     /* @phpstan-ignore-next-line */
     private $conn;
@@ -24,17 +19,22 @@ class SocketConnection
     private function __construct(private string $context, bool $isBlocking)
     {
         try {
-            $this->conn = stream_socket_client(
-                $this->socketAddr,
+            $this->conn = \stream_socket_client(
+                $this->buildAddressPath(),
                 $this->errorCode,
                 $this->errorMessage,
-                $this->connectTimeout,
+                self::CONNECT_TIMEOUT,
                 STREAM_CLIENT_CONNECT
             );
             /* @phpstan-ignore-next-line */
-            stream_set_blocking($this->conn, $isBlocking);
+            \stream_set_blocking($this->conn, $isBlocking);
         } catch (ErrorException $exception) {
-            throw new \Exception("Failed to create a socket connection.", 0, $exception);
+            $errorMessage = \sprintf(
+                'stream_socket_client initialization failed. Code: %d, Message: %s',
+                $this->errorCode,
+                $this->errorMessage
+            );
+            throw new \Exception($errorMessage, $this->errorCode);
         }
     }
 
@@ -48,15 +48,19 @@ class SocketConnection
 
     public function request(): Response
     {
-        stream_socket_sendto($this->conn, $this->context);
+        \stream_socket_sendto($this->conn, $this->context);
 
         /* @phpstan-ignore-next-line */
-        return new Response(stream_get_contents($this->conn, -1));
+        $response = new Response(\stream_get_contents($this->conn, -1));
+
+        $this->closeConn();
+
+        return $response;
     }
 
     public function startStream(): void
     {
-        stream_socket_sendto($this->conn, $this->context);
+        \stream_socket_sendto($this->conn, $this->context);
     }
 
     /* @phpstan-ignore-next-line */
@@ -67,6 +71,11 @@ class SocketConnection
 
     public function closeConn(): void
     {
-        fclose($this->conn);
+        \fclose($this->conn);
+    }
+
+    private function buildAddressPath(): string
+    {
+        return 'unix://'.self::DOCKER_SOCK_PATH;
     }
 }

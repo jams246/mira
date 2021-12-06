@@ -16,14 +16,15 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'ampere:stats:docker',
-    description: 'Starts a loop to continuously retrieve docker stats and place the results into memcached',
+    description: 'Starts a loop to continuously retrieve docker stats and place the results into memcached.',
 )]
 class AmpereStatsDockerCommand extends Command
 {
-    private const DOCKER_SOCK_PATH = '/var/run/docker.sock';
+    private const WANTED_STATE = 'running';
 
     public function __construct(private CacheItemPoolInterface $cache)
     {
@@ -35,10 +36,14 @@ class AmpereStatsDockerCommand extends Command
     {
         try {
             $this->cache->deleteItem('docker.list');
-        } catch (\Exception|InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $e) {
         } finally {
-            if (!\file_exists(self::DOCKER_SOCK_PATH)) {
-                return 0;
+            if (!\file_exists(DockerClient\SocketConnection::DOCKER_SOCK_PATH)) {
+                $io = new SymfonyStyle($input, $output);
+
+                $io->error(\sprintf('File %s not found', DockerClient\SocketConnection::DOCKER_SOCK_PATH));
+
+                return Command::FAILURE;
             }
         }
 
@@ -48,18 +53,22 @@ class AmpereStatsDockerCommand extends Command
         while (true) {
             $containerListConn = DockerClient\SocketConnection::create($containerListContext);
             $response = $containerListConn->request();
-            $containerListConn->closeConn();
 
             $containerList = $response->getContent();
-
             foreach ($containerList as $container) {
-                if (isset($containerStreams[$container['Id']])) {
-                    continue;
+                if (self::WANTED_STATE === $container['State'] && !isset($containerStreams[$container['Id']])) {
+                    try {
+                        $context = Context::create(new ContainerStats(new ContainerIdValueObject($container['Id'])));
+                    } catch (ValueObjectException $e) {
+                        continue;
+                    }
+                    $conn = DockerClient\SocketConnection::create($context);
+                    $conn->startStream();
+                    $containerStreams[$container['Id']] = $conn->getConn();
+                } else {
+                    \fclose($containerStreams[$container['Id']]);
+                    unset($containerStreams[$container['Id']]);
                 }
-                $context = Context::create(new ContainerStats(new ContainerIdValueObject($container['Id'])));
-                $conn = DockerClient\SocketConnection::create($context);
-                $conn->startStream();
-                $containerStreams[$container['Id']] = $conn->getConn();
             }
             \sleep(1);
 
