@@ -16,7 +16,7 @@ class Context
         $this->setUri($uri);
     }
 
-    public static function create(IEndpointInterface $endpoint)
+    public static function create(IEndpointInterface $endpoint): Context
     {
         return new Context(
             $endpoint->getMethod(),

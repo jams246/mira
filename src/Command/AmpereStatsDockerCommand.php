@@ -44,6 +44,7 @@ class AmpereStatsDockerCommand extends Command
 
         $containerStreams = [];
         $containerListContext = Context::create(new ContainerList());
+        /* @phpstan-ignore-next-line */
         while (true) {
             $containerListConn = DockerClient\SocketConnection::create($containerListContext);
             $response = $containerListConn->request();
@@ -64,6 +65,7 @@ class AmpereStatsDockerCommand extends Command
 
             $response = new \ArrayObject();
             foreach ($containerList as $container) {
+                /* @phpstan-ignore-next-line */
                 $containerStats = (new Response(\stream_get_contents($containerStreams[$container['Id']], -1)))->getContent();
 
                 try {

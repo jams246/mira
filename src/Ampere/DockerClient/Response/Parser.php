@@ -2,11 +2,16 @@
 
 namespace App\Ampere\DockerClient\Response;
 
+use App\Ampere\DockerClient\Response\Exception\EndOfHeadersException;
+
 class Parser
 {
     public static function extractHeaders(string $content): array
     {
         $positionEndOfHeaders = self::getEndOfHeaders($content);
+        if (!$positionEndOfHeaders) {
+            throw new EndOfHeadersException('Expecting a integer result but false given. Indicates that $content is not a valid http response string');
+        }
         $content = \substr($content, 0, $positionEndOfHeaders);
         $content = \explode("\r\n", $content);
 
@@ -29,18 +34,21 @@ class Parser
             return self::cleanContent(\substr($content, -$contentLength));
         }
         $positionEndOfHeaders = self::getEndOfHeaders($content);
+        if (!$positionEndOfHeaders) {
+            throw new EndOfHeadersException('Expecting a integer result but false given. Indicates that $content is not a valid http response string');
+        }
 
         $content = \substr($content, $positionEndOfHeaders, \strlen($content) - $positionEndOfHeaders);
 
         return self::cleanContent($content);
     }
 
-    private static function getEndOfHeaders(&$content): int
+    private static function getEndOfHeaders(string &$content): int|false
     {
         return \strpos($content, "\r\n\r\n");
     }
 
-    private static function cleanContent($content)
+    private static function cleanContent(string $content): string
     {
         return \str_replace(["\r", "\n"], '', $content);
     }
