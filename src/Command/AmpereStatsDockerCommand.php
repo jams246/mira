@@ -55,29 +55,30 @@ class AmpereStatsDockerCommand extends Command
             $response = $containerListConn->request();
 
             $containerList = $response->getContent();
-            foreach ($containerList as $container) {
-                if (self::WANTED_STATE === $container['State'] && !isset($containerStreams[$container['Id']])) {
-                    try {
-                        $context = Context::create(new ContainerStats(new ContainerIdValueObject($container['Id'])));
-                    } catch (ValueObjectException $e) {
-                        continue;
-                    }
-                    $conn = DockerClient\SocketConnection::create($context);
-                    $conn->startStream();
-                    $containerStreams[$container['Id']] = $conn->getConn();
-                } else {
+            foreach ($containerList as $key => $container) {
+                if (self::WANTED_STATE !== $container['State'] && isset($containerStreams[$container['Id']])) {
                     \fclose($containerStreams[$container['Id']]);
-                    unset($containerStreams[$container['Id']]);
+                    unset($containerStreams[$container['Id']], $containerList[$key]);
+                    continue;
                 }
+
+                try {
+                    $context = Context::create(new ContainerStats(new ContainerIdValueObject($container['Id'])));
+                } catch (ValueObjectException $e) {
+                    continue;
+                }
+                $conn = DockerClient\SocketConnection::create($context);
+                $conn->startStream();
+                $containerStreams[$container['Id']] = $conn->getConn();
             }
             \sleep(1);
 
             $response = new \ArrayObject();
             foreach ($containerList as $container) {
-                /* @phpstan-ignore-next-line */
-                $containerStats = (new Response(\stream_get_contents($containerStreams[$container['Id']], -1)))->getContent();
-
                 try {
+                    /* @phpstan-ignore-next-line */
+                    $containerStats = (new Response(\stream_get_contents($containerStreams[$container['Id']], -1)))->getContent();
+
                     $cpuDelta = $containerStats['cpu_stats']['cpu_usage']['total_usage'] - $containerStats['precpu_stats']['cpu_usage']['total_usage'];
                     $systemCpuDelta = $containerStats['cpu_stats']['system_cpu_usage'] - $containerStats['precpu_stats']['system_cpu_usage'];
                     $numberCpus = $containerStats['cpu_stats']['online_cpus'];
@@ -91,6 +92,7 @@ class AmpereStatsDockerCommand extends Command
                         $container['State'],
                         \round($cpuUsage, 1),
                         $usedMemory,
+                        (int) $container['Created']
                     ));
                 } catch (ValueObjectException|\Exception $e) {
                     continue;

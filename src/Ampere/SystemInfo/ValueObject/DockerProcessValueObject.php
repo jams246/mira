@@ -10,7 +10,8 @@ class DockerProcessValueObject
         private string $name,
         private string $state,
         private float $cpu,
-        private int $memory
+        private int $memory,
+        private int $createdAt
     ) {
         $argList = \func_get_args();
         \array_walk($argList, function ($item) {
@@ -39,5 +40,10 @@ class DockerProcessValueObject
     public function getMemory(): int
     {
         return $this->memory;
+    }
+
+    public function getCreatedAt(): int
+    {
+        return $this->createdAt;
     }
 }

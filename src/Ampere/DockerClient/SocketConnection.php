@@ -8,7 +8,7 @@ use ErrorException;
 
 class SocketConnection
 {
-    public const DOCKER_SOCK_PATH = '/var/run/dockesr.sock';
+    public const DOCKER_SOCK_PATH = '/var/run/docker.sock';
     private const CONNECT_TIMEOUT = 10;
 
     /* @phpstan-ignore-next-line */
