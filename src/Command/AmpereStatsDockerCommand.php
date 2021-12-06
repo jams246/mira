@@ -3,6 +3,11 @@
 namespace App\Command;
 
 use App\Ampere\DockerClient;
+use App\Ampere\DockerClient\Endpoint\ContainerList;
+use App\Ampere\DockerClient\Endpoint\ContainerStats;
+use App\Ampere\DockerClient\Request\Context;
+use App\Ampere\DockerClient\Response\Response;
+use App\Ampere\DockerClient\ValueObject\ContainerIdValueObject;
 use App\Ampere\SystemInfo\ValueObject\DockerProcessValueObject;
 use App\Ampere\SystemInfo\ValueObject\Exception\ValueObjectException;
 use Psr\Cache\CacheItemPoolInterface;
@@ -14,13 +19,13 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(
     name: 'ampere:stats:docker',
-    description: 'Starts the loop to continuously retrieve docker stats and place the results into memcached',
+    description: 'Starts a loop to continuously retrieve docker stats and place the results into memcached',
 )]
 class AmpereStatsDockerCommand extends Command
 {
     private const DOCKER_SOCK_PATH = '/var/run/docker.sock';
 
-    public function __construct(private CacheItemPoolInterface $cache, private DockerClient $client)
+    public function __construct(private CacheItemPoolInterface $cache)
     {
         $this->setProcessTitle('Mira');
         parent::__construct();
@@ -28,44 +33,55 @@ class AmpereStatsDockerCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        if (!\file_exists(self::DOCKER_SOCK_PATH)) {
-            try {
-                $this->cache->deleteItem('docker.list');
-            } catch (\Exception|InvalidArgumentException $e) {
+        try {
+            $this->cache->deleteItem('docker.list');
+        } catch (\Exception|InvalidArgumentException $e) {
+        } finally {
+            if (!\file_exists(self::DOCKER_SOCK_PATH)) {
+                return 0;
             }
-
-            return 0;
         }
 
-        /* @phpstan-ignore-next-line */
+        $containerStreams = [];
+        $containerListContext = Context::create(new ContainerList());
         while (true) {
-            $containerList = $this->client->dispatchCommand('/containers/json');
+            $containerListConn = DockerClient\SocketConnection::create($containerListContext);
+            $response = $containerListConn->request();
+            $containerListConn->closeConn();
 
-            $containers = [];
+            $containerList = $response->getContent();
+
             foreach ($containerList as $container) {
-                $containers[] = "/containers/{$container->Id}/stats?stream=false&one-shot=false";
+                if (isset($containerStreams[$container['Id']])) {
+                    continue;
+                }
+                $context = Context::create(new ContainerStats(new ContainerIdValueObject($container['Id'])));
+                $conn = DockerClient\SocketConnection::create($context);
+                $conn->startStream();
+                $containerStreams[$container['Id']] = $conn->getConn();
             }
-
-            $containerStats = $this->client->multiCurl($containers);
+            \sleep(1);
 
             $response = new \ArrayObject();
-            foreach ($containerList as $key => $container) {
-                $cpuDelta = $containerStats[$key]->cpu_stats->cpu_usage->total_usage - $containerStats[$key]->precpu_stats->cpu_usage->total_usage;
-                $systemCpuDelta = $containerStats[$key]->cpu_stats->system_cpu_usage - $containerStats[$key]->precpu_stats->system_cpu_usage;
-                $numberCpus = $containerStats[$key]->cpu_stats->online_cpus;
-                $cpuUsage = (($cpuDelta / $systemCpuDelta) * $numberCpus) * 100.0;
-
-                $usedMemory = $containerStats[$key]->memory_stats->usage - $containerStats[$key]->memory_stats->stats->cache;
+            foreach ($containerList as $container) {
+                $containerStats = (new Response(\stream_get_contents($containerStreams[$container['Id']], -1)))->getContent();
 
                 try {
+                    $cpuDelta = $containerStats['cpu_stats']['cpu_usage']['total_usage'] - $containerStats['precpu_stats']['cpu_usage']['total_usage'];
+                    $systemCpuDelta = $containerStats['cpu_stats']['system_cpu_usage'] - $containerStats['precpu_stats']['system_cpu_usage'];
+                    $numberCpus = $containerStats['cpu_stats']['online_cpus'];
+                    $cpuUsage = (($cpuDelta / $systemCpuDelta) * $numberCpus) * 100.0;
+
+                    $usedMemory = $containerStats['memory_stats']['usage'] - $containerStats['memory_stats']['stats']['cache'];
+
                     $response->append(new DockerProcessValueObject(
                     //remove the first / from all container names
-                        \substr($container->Names[0], 1),
-                        $container->State,
+                        \substr($container['Names'][0], 1),
+                        $container['State'],
                         \round($cpuUsage, 1),
                         $usedMemory,
                     ));
-                } catch (ValueObjectException $e) {
+                } catch (ValueObjectException|\Exception $e) {
                     continue;
                 }
             }
@@ -73,8 +89,6 @@ class AmpereStatsDockerCommand extends Command
             $dockerList = $this->cache->getItem('docker.list');
             $dockerList->set($response->getArrayCopy());
             $this->cache->save($dockerList);
-
-            \sleep(1);
         }
     }
 }
