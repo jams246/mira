@@ -30,11 +30,11 @@ service:
     process_num: 1
     exec_timeout: 0
     remain_after_exit: false
-#  docker:
-#    command: "bin/console ampere:stats:docker"
-#    process_num: 1
-#    exec_timeout: 0
-#    remain_after_exit: false
+  docker:
+    command: "bin/console ampere:stats:docker"
+    process_num: 1
+    exec_timeout: 0
+    remain_after_exit: false
 
 logs:
   channels:
