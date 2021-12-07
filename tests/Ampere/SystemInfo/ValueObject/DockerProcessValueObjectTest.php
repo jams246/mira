@@ -18,9 +18,9 @@ class DockerProcessValueObjectTest extends TestCase
     /**
      * @dataProvider validDockerProcessValueProvider
      */
-    public function testGetValues(string $name, string $state, float $cpu, int $memory, int $createdAt, array $expected): void
+    public function testGetValues(string $name, string $state, float $cpu, int $memory, float $upTime, array $expected): void
     {
-        $object = new DockerProcessValueObject($name, $state, $cpu, $memory, $createdAt);
+        $object = new DockerProcessValueObject($name, $state, $cpu, $memory, $upTime);
 
         $this->assertSame($expected[0], $object->getName());
         $this->assertSame($expected[1], $object->getState());
@@ -37,8 +37,8 @@ class DockerProcessValueObjectTest extends TestCase
                 'state',
                 1.0,
                 246,
-                1638759482,
-                ['name', 'state', 1.0, 246, 1638759482],
+                1638759482.0,
+                ['name', 'state', 1.0, 246, 1638759482.0],
             ],
         ];
     }
