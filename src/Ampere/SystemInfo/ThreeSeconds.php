@@ -38,6 +38,9 @@ class ThreeSeconds extends BaseLive
                 $formattedDocker->state = $docker->getState();
                 $formattedDocker->cpu = $docker->getCpu();
                 $formattedDocker->memory = \ByteUnits\Binary::bytes($docker->getMemory())->format();
+                $formattedDocker->upTime = \Carbon\CarbonInterval::seconds($docker->getUpTime())->cascade()->forHumans(
+                    self::DATE_FORMAT
+                );
 
                 $formattedDockerList->append($formattedDocker);
             }
