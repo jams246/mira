@@ -6,8 +6,8 @@ server:
   relay: "unix:///tmp/rr.sock"
   relay_timeout: 60s
   env:
-    APP_RUNTIME: Baldinof\RoadRunnerBundle\Runtime\Runtime
-    XDEBUG_SESSION: 1
+    - APP_RUNTIME: Baldinof\RoadRunnerBundle\Runtime\Runtime
+    - XDEBUG_SESSION: "1"
 
 http:
   address: 0.0.0.0:44356
@@ -30,11 +30,11 @@ service:
     process_num: 1
     exec_timeout: 0
     remain_after_exit: false
-  docker:
-    command: "bin/console ampere:stats:docker"
-    process_num: 1
-    exec_timeout: 0
-    remain_after_exit: false
+#  docker:
+#    command: "bin/console ampere:stats:docker"
+#    process_num: 1
+#    exec_timeout: 0
+#    remain_after_exit: false
 
 logs:
   channels:

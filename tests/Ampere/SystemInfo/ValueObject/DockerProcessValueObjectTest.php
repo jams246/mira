@@ -26,7 +26,7 @@ class DockerProcessValueObjectTest extends TestCase
         $this->assertSame($expected[1], $object->getState());
         $this->assertSame($expected[2], $object->getCpu());
         $this->assertSame($expected[3], $object->getMemory());
-        $this->assertSame($expected[4], $object->getCreatedAt());
+        $this->assertSame($expected[4], $object->getUpTime());
     }
 
     public function validDockerProcessValueProvider(): array

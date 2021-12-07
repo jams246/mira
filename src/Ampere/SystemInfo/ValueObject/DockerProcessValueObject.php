@@ -11,7 +11,7 @@ class DockerProcessValueObject
         private string $state,
         private float $cpu,
         private int $memory,
-        private int $createdAt
+        private float $upTime
     ) {
         $argList = \func_get_args();
         \array_walk($argList, function ($item) {
@@ -42,8 +42,8 @@ class DockerProcessValueObject
         return $this->memory;
     }
 
-    public function getCreatedAt(): int
+    public function getUpTime(): float
     {
-        return $this->createdAt;
+        return $this->upTime;
     }
 }

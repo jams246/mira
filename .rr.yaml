@@ -3,7 +3,7 @@ server:
   relay: "unix:///tmp/rr.sock"
   relay_timeout: 60s
   env:
-    APP_RUNTIME: Baldinof\RoadRunnerBundle\Runtime\Runtime
+    - APP_RUNTIME: Baldinof\RoadRunnerBundle\Runtime\Runtime
 
 http:
   address: 0.0.0.0:44356

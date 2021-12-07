@@ -71,13 +71,15 @@ class AmpereStatsDockerCommand extends Command
                 $conn->startStream();
                 $containerStreams[$container['Id']] = $conn->getConn();
             }
-            \sleep(1);
+            \usleep(2100000);
 
             $response = new \ArrayObject();
             foreach ($containerList as $container) {
                 try {
+                    $streamContent = \stream_get_contents($containerStreams[$container['Id']], -1);
                     /* @phpstan-ignore-next-line */
-                    $containerStats = (new Response(\stream_get_contents($containerStreams[$container['Id']], -1)))->getContent();
+                    \preg_match_all('/{.*}/m', $streamContent, $matches, PREG_SET_ORDER);
+                    $containerStats = (new Response(\end($matches)[0]))->getContent();
 
                     $cpuDelta = $containerStats['cpu_stats']['cpu_usage']['total_usage'] - $containerStats['precpu_stats']['cpu_usage']['total_usage'];
                     $systemCpuDelta = $containerStats['cpu_stats']['system_cpu_usage'] - $containerStats['precpu_stats']['system_cpu_usage'];
@@ -86,13 +88,15 @@ class AmpereStatsDockerCommand extends Command
 
                     $usedMemory = $containerStats['memory_stats']['usage'] - $containerStats['memory_stats']['stats']['cache'];
 
+                    $upTime = \time() - (int) $container['Created'];
+
                     $response->append(new DockerProcessValueObject(
                     //remove the first / from all container names
                         \substr($container['Names'][0], 1),
                         $container['State'],
                         \round($cpuUsage, 1),
                         $usedMemory,
-                        (int) $container['Created']
+                        $upTime
                     ));
                 } catch (ValueObjectException|\Exception $e) {
                     continue;

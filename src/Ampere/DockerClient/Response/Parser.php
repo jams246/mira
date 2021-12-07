@@ -2,15 +2,13 @@
 
 namespace App\Ampere\DockerClient\Response;
 
-use App\Ampere\DockerClient\Response\Exception\EndOfHeadersException;
-
 class Parser
 {
     public static function extractHeaders(string $content): array
     {
         $positionEndOfHeaders = self::getEndOfHeaders($content);
         if (!$positionEndOfHeaders) {
-            throw new EndOfHeadersException('Expecting a integer result but false given. Indicates that $content is not a valid http response string');
+            return [];
         }
         $content = \substr($content, 0, $positionEndOfHeaders);
         $content = \explode("\r\n", $content);
@@ -35,7 +33,7 @@ class Parser
         }
         $positionEndOfHeaders = self::getEndOfHeaders($content);
         if (!$positionEndOfHeaders) {
-            throw new EndOfHeadersException('Expecting a integer result but false given. Indicates that $content is not a valid http response string');
+            $positionEndOfHeaders = 0;
         }
 
         $content = \substr($content, $positionEndOfHeaders, \strlen($content) - $positionEndOfHeaders);
