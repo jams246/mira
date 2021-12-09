@@ -1,11 +1,12 @@
 FROM php:8.1-cli-alpine
 
 RUN apk update && \
-    apk add --no-cache composer coreutils icu icu-dev libzip libzip-dev memcached unzip yarn zip && \
+    apk add --no-cache coreutils icu icu-dev libzip libzip-dev memcached unzip yarn zip && \
     docker-php-ext-install bcmath intl sockets zip
 
 COPY .docker/prod/php.ini /usr/local/etc/php/conf.d/php.ini
 COPY --from=spiralscout/roadrunner:2.6.3 /usr/bin/rr /usr/bin/rr
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 ENV APP_ENV prod
 
