@@ -40,6 +40,8 @@ type: docker
 name: Deploy
 
 trigger:
+  branch:
+    - master
   event:
     - tag
 
