@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod file;
 mod timing;
 mod viewer;
 
@@ -9,7 +10,9 @@ use viewer::Viewer;
 
 fn main() {
     let timing = Timing::start();
+    let initial_path = std::env::args_os().nth(1).map(std::path::PathBuf::from);
     Application::new().run(move |cx: &mut App| {
+        viewer::bind_keys(cx);
         let bounds = Bounds::centered(None, size(px(1000.), px(760.)), cx);
         let result = cx.open_window(
             WindowOptions {
@@ -24,7 +27,14 @@ fn main() {
             move |window, cx| {
                 timing.mark("window_created");
                 window.on_next_frame(move |_, _| timing.mark("first_frame_callback"));
-                cx.new(|_| Viewer)
+                let viewer = cx.new(|cx| Viewer::new(window, cx, timing));
+                if let Some(path) = initial_path {
+                    let viewer = viewer.clone();
+                    window.on_next_frame(move |window, cx| {
+                        viewer.update(cx, |viewer, cx| viewer.load(path, window, cx));
+                    });
+                }
+                viewer
             },
         );
         if let Err(error) = result {

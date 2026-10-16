@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 #[derive(Clone, Copy)]
 pub(crate) struct Timing {
@@ -15,11 +15,12 @@ impl Timing {
     }
 
     pub(crate) fn mark(self, event: &str) {
+        self.duration(event, self.start.elapsed());
+    }
+
+    pub(crate) fn duration(self, event: &str, duration: Duration) {
         if self.enabled {
-            eprintln!(
-                "MIRA {event} {:.3}ms",
-                self.start.elapsed().as_secs_f64() * 1000.
-            );
+            eprintln!("MIRA {event} {:.3}ms", duration.as_secs_f64() * 1000.);
         }
     }
 }
