@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 gpui = { version = "=0.2.2", default-features = false, features = ["windows-manifest"] }
+pulldown-cmark = { version = "=0.13.4", default-features = false }
 
 [profile.release]
 strip = "debuginfo"
