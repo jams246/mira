@@ -1,12 +1,15 @@
-use std::{path::PathBuf, sync::Arc};
+mod loading;
 
-use crate::{
-    file::{self, LoadedDocument},
-    timing::Timing,
-};
+use std::{rc::Rc, sync::Arc};
+
+use crate::{file::LoadedDocument, reader, timing::Timing};
 use gpui::{
-    App, Context, FocusHandle, KeyBinding, PathPromptOptions, Task, Window, actions, div,
-    prelude::*, rgb,
+    App, Context, FocusHandle, KeyBinding, ListAlignment, ListOffset, ListState, Task, Window,
+    actions, div, prelude::*, px, rgb,
+};
+use mira::{
+    document::BlockKind,
+    links::{self, LinkTarget},
 };
 
 actions!(mira, [Open]);
@@ -22,6 +25,10 @@ pub(crate) struct Viewer {
     load_task: Option<Task<()>>,
     focus: FocusHandle,
     timing: Timing,
+    list: ListState,
+    pending_anchor: Option<String>,
+    link_error: Option<String>,
+    content_marked: bool,
 }
 
 impl Viewer {
@@ -35,98 +42,97 @@ impl Viewer {
             load_task: None,
             focus,
             timing,
+            list: ListState::new(0, ListAlignment::Top, px(500.)),
+            pending_anchor: None,
+            link_error: None,
+            content_marked: false,
         }
     }
 
-    pub(crate) fn load(&mut self, path: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
-        self.generation = self.generation.wrapping_add(1);
-        let generation = self.generation;
-        self.loaded = None;
-        self.message = format!("Opening {}...", path.display());
-        window.set_window_title("MIRA");
+    fn activate_link(&mut self, target: usize, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(loaded) = &self.loaded else {
+            return;
+        };
+        let Some(target) = loaded.document.targets.get(target) else {
+            return;
+        };
+        self.link_error = None;
+        match links::resolve(&loaded.path, target) {
+            Ok(LinkTarget::Web(url)) => cx.open_url(&url),
+            Ok(LinkTarget::Document { path, anchor }) => {
+                self.load(path, window, cx);
+                self.pending_anchor = anchor;
+            }
+            Ok(LinkTarget::Anchor(anchor)) => self.jump_to_anchor(&anchor),
+            Err(error) => self.link_error = Some(error),
+        }
         cx.notify();
-        let task = cx.background_executor().spawn(async move {
-            let result = file::load(&path);
-            (path, result)
-        });
-        self.load_task = Some(cx.spawn_in(window, async move |viewer, cx| {
-            let (path, result) = task.await;
-            let _ = viewer.update_in(cx, |viewer, window, cx| {
-                if generation != viewer.generation {
-                    return;
-                }
-                match result {
-                    Ok(loaded) => {
-                        viewer.timing.duration("file_read", loaded.read_time);
-                        viewer.timing.duration("parse_model", loaded.parse_time);
-                        viewer.timing.mark("document_loaded");
-                        viewer.message = format!(
-                            "Loaded {} blocks from {}.",
-                            loaded.document.blocks.len(),
-                            path.display()
-                        );
-                        window.set_window_title(&format!(
-                            "{} | MIRA",
-                            loaded
-                                .path
-                                .file_name()
-                                .unwrap_or_default()
-                                .to_string_lossy()
-                        ));
-                        viewer.loaded = Some(Arc::new(loaded));
-                    }
-                    Err(error) => {
-                        viewer.message = format!("Cannot open {}: {error}", path.display());
-                    }
-                }
-                cx.notify();
-            });
-        }));
     }
 
-    fn open(&mut self, _: &Open, window: &mut Window, cx: &mut Context<Self>) {
-        let paths = cx.prompt_for_paths(PathPromptOptions {
-            files: true,
-            directories: false,
-            multiple: false,
-            prompt: Some("Open Markdown".into()),
-        });
-        cx.spawn_in(window, async move |viewer, cx| match paths.await {
-            Ok(Ok(Some(paths))) => {
-                if let Some(path) = paths.into_iter().next() {
-                    let _ = viewer.update_in(cx, |viewer, window, cx| {
-                        viewer.load(path, window, cx);
-                    });
-                }
-            }
-            Ok(Ok(None)) => {}
-            result => {
-                let _ = viewer.update(cx, |viewer, cx| {
-                    viewer.message = format!("Cannot open file dialog: {result:?}");
-                    cx.notify();
-                });
-            }
-        })
-        .detach();
+    fn jump_to_anchor(&mut self, anchor: &str) {
+        let Some(loaded) = &self.loaded else {
+            return;
+        };
+        let index = if anchor.is_empty() {
+            Some(0)
+        } else {
+            loaded.document.blocks.iter().position(|block| {
+                let BlockKind::Heading { runs, .. } = &block.kind else {
+                    return false;
+                };
+                let text: String = runs
+                    .iter()
+                    .map(|run| run.text.as_str(&loaded.document.source))
+                    .collect();
+                links::heading_slug(&text) == anchor
+            })
+        };
+        match index {
+            Some(item_ix) => self.list.scroll_to(ListOffset {
+                item_ix,
+                offset_in_item: px(0.),
+            }),
+            None => self.link_error = Some(format!("Heading not found: #{anchor}")),
+        }
     }
 }
 
 impl Render for Viewer {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        div()
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let root = div()
             .key_context("Mira")
             .track_focus(&self.focus)
             .on_action(cx.listener(Self::open))
             .size_full()
             .flex()
             .flex_col()
-            .justify_center()
+            .bg(rgb(0xfafafa))
+            .text_color(rgb(0x242424))
+            .font_family("Segoe UI");
+        if let Some(loaded) = &self.loaded {
+            if !self.content_marked {
+                self.content_marked = true;
+                let timing = self.timing;
+                window.on_next_frame(move |_, _| timing.mark("first_content_callback"));
+            }
+            let activate_link = Rc::new(cx.processor(Self::activate_link));
+            return root
+                .when_some(self.link_error.clone(), |root, message| {
+                    root.child(div().p_3().text_color(rgb(0xa02020)).child(message))
+                })
+                .when(loaded.document.blocks.is_empty(), |root| {
+                    root.child(div().p_8().child("This Markdown file is empty."))
+                })
+                .child(reader::viewport(
+                    Arc::clone(loaded),
+                    self.list.clone(),
+                    activate_link,
+                ));
+        }
+        root.justify_center()
             .items_center()
             .p_8()
             .gap_3()
-            .bg(rgb(0xfafafa))
-            .text_color(rgb(0x242424))
-            .font_family("Segoe UI")
             .child(div().text_3xl().child("MIRA"))
             .child(self.message.clone())
             .child(

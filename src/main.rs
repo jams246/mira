@@ -1,6 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod file;
+mod reader;
+mod render_block;
+mod render_text;
 mod timing;
 mod viewer;
 

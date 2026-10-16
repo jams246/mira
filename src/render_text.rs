@@ -1,0 +1,119 @@
+use std::{ops::Range, rc::Rc};
+
+use gpui::{
+    AnyElement, App, FontStyle, FontWeight, InteractiveText, IntoElement, StrikethroughStyle,
+    StyledText, TextRun, UnderlineStyle, Window, font, px, rgb,
+};
+use mira::document::{Document, Inline};
+
+pub(crate) type LinkHandler = Rc<dyn Fn(usize, &mut Window, &mut App)>;
+
+pub(crate) fn text(
+    document: &Document,
+    index: usize,
+    inlines: &[Inline],
+    heading: bool,
+    activate_link: LinkHandler,
+) -> AnyElement {
+    let PreparedText {
+        text,
+        runs,
+        links,
+        destinations,
+    } = prepare(document, inlines, heading);
+    let styled = StyledText::new(text).with_runs(runs);
+    InteractiveText::new(("markdown-text", index), styled)
+        .on_click(links, move |link, window, cx| {
+            activate_link(destinations[link], window, cx);
+        })
+        .into_any_element()
+}
+
+struct PreparedText {
+    text: String,
+    runs: Vec<TextRun>,
+    links: Vec<Range<usize>>,
+    destinations: Vec<usize>,
+}
+
+fn prepare(document: &Document, inlines: &[Inline], heading: bool) -> PreparedText {
+    let mut text = String::new();
+    let mut runs = Vec::with_capacity(inlines.len());
+    let mut links = Vec::new();
+    let mut destinations = Vec::new();
+    for inline in inlines {
+        let start = text.len();
+        text.push_str(inline.text.as_str(&document.source));
+        let mut font = font(if inline.style.code {
+            "Consolas"
+        } else {
+            "Segoe UI"
+        });
+        if heading || inline.style.bold {
+            font.weight = FontWeight::BOLD;
+        }
+        if inline.style.italic {
+            font.style = FontStyle::Italic;
+        }
+        runs.push(TextRun {
+            len: text.len() - start,
+            font,
+            color: rgb(if inline.link.is_some() {
+                0x0969da
+            } else {
+                0x242424
+            })
+            .into(),
+            background_color: inline.style.code.then(|| rgb(0xeeeeee).into()),
+            underline: inline.link.map(|_| UnderlineStyle {
+                thickness: px(1.),
+                color: None,
+                wavy: false,
+            }),
+            strikethrough: inline.style.strike.then_some(StrikethroughStyle {
+                thickness: px(1.),
+                color: None,
+            }),
+        });
+        if let Some(target) = inline.link {
+            links.push(start..text.len());
+            destinations.push(target);
+        }
+    }
+    PreparedText {
+        text,
+        runs,
+        links,
+        destinations,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mira::{document::BlockKind, markdown};
+
+    #[test]
+    fn combines_native_styles_and_preserves_utf8_link_ranges() {
+        let document =
+            markdown::parse("***Grüße*** and [東京](https://example.com) ~~gone~~".into());
+        let BlockKind::Paragraph(inlines) = &document.blocks[0].kind else {
+            panic!("paragraph");
+        };
+        let prepared = prepare(&document, inlines, false);
+        assert_eq!(prepared.text, "Grüße and 東京 gone");
+        assert_eq!(
+            prepared.runs.iter().map(|run| run.len).sum::<usize>(),
+            prepared.text.len()
+        );
+        assert!(
+            prepared
+                .runs
+                .iter()
+                .any(|run| run.font.weight == FontWeight::BOLD
+                    && run.font.style == FontStyle::Italic)
+        );
+        assert_eq!(&prepared.text[prepared.links[0].clone()], "東京");
+        assert!(prepared.runs.iter().any(|run| run.strikethrough.is_some()));
+    }
+}
