@@ -4,6 +4,8 @@ mod file;
 mod reader;
 mod render_block;
 mod render_text;
+mod selection;
+mod selection_text;
 mod timing;
 mod viewer;
 

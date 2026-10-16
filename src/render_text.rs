@@ -1,10 +1,12 @@
 use std::{ops::Range, rc::Rc};
 
 use gpui::{
-    AnyElement, App, FontStyle, FontWeight, InteractiveText, IntoElement, StrikethroughStyle,
-    StyledText, TextRun, UnderlineStyle, Window, font, px, rgb,
+    AnyElement, App, EntityId, FontStyle, FontWeight, InteractiveText, IntoElement, SharedString,
+    StrikethroughStyle, StyledText, TextRun, UnderlineStyle, Window, font, px, rgb,
 };
 use mira::document::{Document, Inline};
+
+use crate::{selection::SelectionHandle, selection_text};
 
 pub(crate) type LinkHandler = Rc<dyn Fn(usize, &mut Window, &mut App)>;
 
@@ -14,6 +16,8 @@ pub(crate) fn text(
     inlines: &[Inline],
     heading: bool,
     activate_link: LinkHandler,
+    selection: SelectionHandle,
+    owner: EntityId,
 ) -> AnyElement {
     let PreparedText {
         text,
@@ -21,12 +25,19 @@ pub(crate) fn text(
         links,
         destinations,
     } = prepare(document, inlines, heading);
-    let styled = StyledText::new(text).with_runs(runs);
-    InteractiveText::new(("markdown-text", index), styled)
+    let runs = selection_text::highlight(runs, selection.borrow().range_for(index, text.len()));
+    let text: SharedString = text.into();
+    let styled = StyledText::new(text.clone()).with_runs(runs);
+    let layout = styled.layout().clone();
+    let link_selection = Rc::clone(&selection);
+    let element = InteractiveText::new(("markdown-text", index), styled)
         .on_click(links, move |link, window, cx| {
-            activate_link(destinations[link], window, cx);
+            if link_selection.borrow().is_empty() {
+                activate_link(destinations[link], window, cx);
+            }
         })
-        .into_any_element()
+        .into_any_element();
+    selection_text::wrap(index, text, layout, element, selection, owner)
 }
 
 struct PreparedText {

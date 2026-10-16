@@ -1,36 +1,31 @@
 use gpui::{AnyElement, App, IntoElement, Window, div, prelude::*, px, relative, rgb};
 use mira::document::{BlockKind, ContextKind, Document};
 
-use crate::render_text::{self, LinkHandler};
+use crate::{
+    render_text::{self, LinkHandler},
+    selection::SelectionHandle,
+};
 
 pub(crate) fn block(
     document: &Document,
     index: usize,
     activate_link: LinkHandler,
+    selection: SelectionHandle,
     window: &mut Window,
     _cx: &mut App,
 ) -> AnyElement {
     let block = &document.blocks[index];
+    let owner = window.current_view();
     let mut context = block.context;
-    let mut list_depth = 0usize;
-    let mut quotes = 0usize;
-    let mut marker = None;
+    let mut ancestors = Vec::new();
     while let Some(index) = context {
         let ancestor = &document.contexts[index];
-        match ancestor.kind {
-            ContextKind::Quote => quotes += 1,
-            ContextKind::ListItem { number, checked } => {
-                if marker.is_none() && block.marker {
-                    marker = Some(match checked {
-                        Some(true) => "☑".into(),
-                        Some(false) => "☐".into(),
-                        None => number.map_or_else(|| "•".into(), |number| format!("{number}.")),
-                    });
-                }
-                list_depth += 1;
-            }
-        }
+        ancestors.push(&ancestor.kind);
         context = ancestor.parent;
+        // shortcut: Show eight ancestor frames, expand when deeper nesting needs distinct borders.
+        if ancestors.len() == 8 {
+            break;
+        }
     }
     let mut content = div().w_full().min_w_0();
     let mut size = 16.;
@@ -43,6 +38,8 @@ pub(crate) fn block(
                 runs,
                 false,
                 activate_link,
+                selection,
+                owner,
             ));
         }
         BlockKind::Heading { level, runs } => {
@@ -54,6 +51,8 @@ pub(crate) fn block(
                 runs,
                 true,
                 activate_link,
+                selection,
+                owner,
             ));
         }
         BlockKind::Rule => {
@@ -64,30 +63,50 @@ pub(crate) fn block(
         BlockKind::Image { .. } => content = content.child("[Local image: rendering pending]"),
     }
     let width: f32 = window.viewport_size().width.into();
-    let indent = (list_depth.saturating_sub(1).min(7) as f32 * 26.
-        + quotes.saturating_sub(1).min(7) as f32 * 16.)
-        .min(width * 0.3);
+    let gutter = (width * 0.3 / ancestors.len().max(1) as f32).min(28.);
+    let mut first_item = true;
+    for ancestor in ancestors {
+        content = match ancestor {
+            ContextKind::Quote => div()
+                .w_full()
+                .min_w_0()
+                .border_l_2()
+                .border_color(rgb(0xc4c8cc))
+                .pl(px(gutter.min(16.)))
+                .child(content),
+            ContextKind::ListItem { number, checked } => {
+                let marker = if first_item {
+                    first_item = false;
+                    let label = match checked {
+                        Some(true) => "☑".into(),
+                        Some(false) => "☐".into(),
+                        None => number.map_or_else(|| "•".into(), |number| format!("{number}.")),
+                    };
+                    div()
+                        .min_w(px(28.))
+                        .flex_none()
+                        .whitespace_nowrap()
+                        .pr_2()
+                        .child(label)
+                        .when(!block.marker, |marker| marker.opacity(0.))
+                } else {
+                    div().w(px(gutter)).flex_none()
+                };
+                div()
+                    .w_full()
+                    .min_w_0()
+                    .flex()
+                    .items_start()
+                    .child(marker)
+                    .child(div().min_w_0().flex_1().child(content))
+            }
+        };
+    }
     div()
         .w_full()
-        .flex()
-        .items_start()
         .text_size(px(size))
         .line_height(relative(1.5))
         .pb(px(margin))
-        .pl(px(indent))
-        .when(quotes > 0, |row| {
-            row.border_l_2()
-                .border_color(rgb(0xc4c8cc))
-                .pl(px(indent + 16.))
-        })
-        .when(list_depth > 0, |row| {
-            row.child(
-                div()
-                    .w(px(28.))
-                    .flex_none()
-                    .child(marker.unwrap_or_default()),
-            )
-        })
         .child(content)
         .into_any_element()
 }

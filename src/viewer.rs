@@ -1,21 +1,32 @@
 mod loading;
+mod navigation;
 
 use std::{rc::Rc, sync::Arc};
 
-use crate::{file::LoadedDocument, reader, timing::Timing};
+use crate::{file::LoadedDocument, reader, selection::SelectionHandle, timing::Timing};
 use gpui::{
-    App, Context, FocusHandle, KeyBinding, ListAlignment, ListOffset, ListState, Task, Window,
-    actions, div, prelude::*, px, rgb,
+    App, Context, FocusHandle, KeyBinding, ListAlignment, ListOffset, ListState, MouseButton, Task,
+    Window, actions, div, prelude::*, px, rgb,
 };
 use mira::{
     document::BlockKind,
     links::{self, LinkTarget},
 };
 
-actions!(mira, [Open]);
+actions!(mira, [Open, Copy, SelectAll, Top, Bottom, PageUp, PageDown]);
 
 pub(crate) fn bind_keys(cx: &mut App) {
-    cx.bind_keys([KeyBinding::new("ctrl-o", Open, Some("Mira"))]);
+    cx.bind_keys([
+        KeyBinding::new("ctrl-o", Open, Some("Mira")),
+        KeyBinding::new("ctrl-c", Copy, Some("Mira")),
+        KeyBinding::new("ctrl-a", SelectAll, Some("Mira")),
+        KeyBinding::new("home", Top, Some("Mira")),
+        KeyBinding::new("end", Bottom, Some("Mira")),
+        KeyBinding::new("ctrl-home", Top, Some("Mira")),
+        KeyBinding::new("ctrl-end", Bottom, Some("Mira")),
+        KeyBinding::new("pageup", PageUp, Some("Mira")),
+        KeyBinding::new("pagedown", PageDown, Some("Mira")),
+    ]);
 }
 
 pub(crate) struct Viewer {
@@ -29,6 +40,7 @@ pub(crate) struct Viewer {
     pending_anchor: Option<String>,
     link_error: Option<String>,
     content_marked: bool,
+    selection: SelectionHandle,
 }
 
 impl Viewer {
@@ -46,6 +58,7 @@ impl Viewer {
             pending_anchor: None,
             link_error: None,
             content_marked: false,
+            selection: SelectionHandle::default(),
         }
     }
 
@@ -103,6 +116,20 @@ impl Render for Viewer {
             .key_context("Mira")
             .track_focus(&self.focus)
             .on_action(cx.listener(Self::open))
+            .on_action(cx.listener(Self::copy))
+            .on_action(cx.listener(Self::select_all))
+            .on_action(cx.listener(Self::top))
+            .on_action(cx.listener(Self::bottom))
+            .on_action(cx.listener(Self::page_up))
+            .on_action(cx.listener(Self::page_down))
+            .on_mouse_up(
+                MouseButton::Left,
+                cx.listener(|viewer, _, _, _| viewer.selection.borrow_mut().finish()),
+            )
+            .on_mouse_up_out(
+                MouseButton::Left,
+                cx.listener(|viewer, _, _, _| viewer.selection.borrow_mut().finish()),
+            )
             .size_full()
             .flex()
             .flex_col()
@@ -127,6 +154,7 @@ impl Render for Viewer {
                     Arc::clone(loaded),
                     self.list.clone(),
                     activate_link,
+                    Rc::clone(&self.selection),
                 ));
         }
         root.justify_center()
