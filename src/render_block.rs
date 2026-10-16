@@ -2,7 +2,7 @@ use gpui::{AnyElement, App, IntoElement, Window, div, prelude::*, px, relative, 
 use mira::document::{BlockKind, ContextKind, Document};
 
 use crate::{
-    render_text::{self, LinkHandler},
+    render_text::{self, LinkHandler, TextKind},
     selection::SelectionHandle,
 };
 
@@ -36,7 +36,7 @@ pub(crate) fn block(
                 document,
                 index,
                 runs,
-                false,
+                TextKind::Body,
                 activate_link,
                 selection,
                 owner,
@@ -49,7 +49,7 @@ pub(crate) fn block(
                 document,
                 index,
                 runs,
-                true,
+                TextKind::Heading,
                 activate_link,
                 selection,
                 owner,
@@ -58,7 +58,28 @@ pub(crate) fn block(
         BlockKind::Rule => {
             content = content.my_3().h(px(1.)).bg(rgb(0xd8d8d8));
         }
-        BlockKind::Code { .. } => content = content.child("[Code block: rendering pending]"),
+        BlockKind::Code { runs, .. } => {
+            content = content.child(
+                div()
+                    .id(("code", index))
+                    .w_full()
+                    .flex()
+                    .overflow_x_scroll()
+                    .p_3()
+                    .bg(rgb(0xeeeeee))
+                    .rounded_md()
+                    .text_size(px(14.))
+                    .child(render_text::text(
+                        document,
+                        index,
+                        runs,
+                        TextKind::Code,
+                        activate_link,
+                        selection,
+                        owner,
+                    )),
+            );
+        }
         BlockKind::TableRow { .. } => content = content.child("[Table row: rendering pending]"),
         BlockKind::Image { .. } => content = content.child("[Local image: rendering pending]"),
     }

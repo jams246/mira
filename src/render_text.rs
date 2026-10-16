@@ -6,15 +6,22 @@ use gpui::{
 };
 use mira::document::{Document, Inline};
 
-use crate::{selection::SelectionHandle, selection_text};
+use crate::{selection::SelectionHandle, selection_text, text_map::TextMap};
 
 pub(crate) type LinkHandler = Rc<dyn Fn(usize, &mut Window, &mut App)>;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TextKind {
+    Body,
+    Heading,
+    Code,
+}
 
 pub(crate) fn text(
     document: &Document,
     index: usize,
     inlines: &[Inline],
-    heading: bool,
+    kind: TextKind,
     activate_link: LinkHandler,
     selection: SelectionHandle,
     owner: EntityId,
@@ -24,8 +31,14 @@ pub(crate) fn text(
         runs,
         links,
         destinations,
-    } = prepare(document, inlines, heading);
-    let runs = selection_text::highlight(runs, selection.borrow().range_for(index, text.len()));
+        mapping,
+        source_len,
+    } = prepare(document, inlines, kind);
+    let selected = selection
+        .borrow()
+        .range_for(index, source_len)
+        .map(|range| mapping.to_display(range.start)..mapping.to_display(range.end));
+    let runs = selection_text::highlight(runs, selected);
     let text: SharedString = text.into();
     let styled = StyledText::new(text.clone()).with_runs(runs);
     let layout = styled.layout().clone();
@@ -37,7 +50,7 @@ pub(crate) fn text(
             }
         })
         .into_any_element();
-    selection_text::wrap(index, text, layout, element, selection, owner)
+    selection_text::wrap(index, text, layout, element, selection, owner, mapping)
 }
 
 struct PreparedText {
@@ -45,9 +58,11 @@ struct PreparedText {
     runs: Vec<TextRun>,
     links: Vec<Range<usize>>,
     destinations: Vec<usize>,
+    mapping: TextMap,
+    source_len: usize,
 }
 
-fn prepare(document: &Document, inlines: &[Inline], heading: bool) -> PreparedText {
+fn prepare(document: &Document, inlines: &[Inline], kind: TextKind) -> PreparedText {
     let mut text = String::new();
     let mut runs = Vec::with_capacity(inlines.len());
     let mut links = Vec::new();
@@ -55,12 +70,12 @@ fn prepare(document: &Document, inlines: &[Inline], heading: bool) -> PreparedTe
     for inline in inlines {
         let start = text.len();
         text.push_str(inline.text.as_str(&document.source));
-        let mut font = font(if inline.style.code {
+        let mut font = font(if inline.style.code || kind == TextKind::Code {
             "Consolas"
         } else {
             "Segoe UI"
         });
-        if heading || inline.style.bold {
+        if kind == TextKind::Heading || inline.style.bold {
             font.weight = FontWeight::BOLD;
         }
         if inline.style.italic {
@@ -91,11 +106,27 @@ fn prepare(document: &Document, inlines: &[Inline], heading: bool) -> PreparedTe
             destinations.push(target);
         }
     }
+    let source_len = text.len();
+    let mut mapping = TextMap::default();
+    if kind == TextKind::Code {
+        (text, mapping) = TextMap::expand(&text);
+        let mut byte = 0;
+        for run in &mut runs {
+            let end = byte + run.len;
+            run.len = mapping.to_display(end) - mapping.to_display(byte);
+            byte = end;
+        }
+        for range in &mut links {
+            *range = mapping.to_display(range.start)..mapping.to_display(range.end);
+        }
+    }
     PreparedText {
         text,
         runs,
         links,
         destinations,
+        mapping,
+        source_len,
     }
 }
 
@@ -111,7 +142,7 @@ mod tests {
         let BlockKind::Paragraph(inlines) = &document.blocks[0].kind else {
             panic!("paragraph");
         };
-        let prepared = prepare(&document, inlines, false);
+        let prepared = prepare(&document, inlines, TextKind::Body);
         assert_eq!(prepared.text, "Grüße and 東京 gone");
         assert_eq!(
             prepared.runs.iter().map(|run| run.len).sum::<usize>(),
@@ -126,5 +157,26 @@ mod tests {
         );
         assert_eq!(&prepared.text[prepared.links[0].clone()], "東京");
         assert!(prepared.runs.iter().any(|run| run.strikethrough.is_some()));
+    }
+
+    #[test]
+    fn code_preserves_indentation_blank_lines_and_native_monospace_runs() {
+        let document = markdown::parse("```\nlet x = 1;\n\n\t  x\n```".into());
+        let BlockKind::Code { runs, .. } = &document.blocks[0].kind else {
+            panic!("code");
+        };
+        let prepared = prepare(&document, runs, TextKind::Code);
+        assert_eq!(prepared.text, "let x = 1;\n\n      x\n");
+        assert_eq!(prepared.source_len, "let x = 1;\n\n\t  x\n".len());
+        assert_eq!(
+            prepared.runs.iter().map(|run| run.len).sum::<usize>(),
+            prepared.text.len()
+        );
+        assert!(
+            prepared
+                .runs
+                .iter()
+                .all(|run| run.font.family.as_ref() == "Consolas")
+        );
     }
 }

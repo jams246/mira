@@ -5,7 +5,10 @@ use gpui::{
     prelude::*, rgb,
 };
 
-use crate::selection::{Position, SelectionHandle, boundary};
+use crate::{
+    selection::{Position, SelectionHandle, boundary},
+    text_map::TextMap,
+};
 
 pub(crate) fn wrap(
     index: usize,
@@ -14,13 +17,17 @@ pub(crate) fn wrap(
     child: AnyElement,
     selection: SelectionHandle,
     owner: EntityId,
+    mapping: TextMap,
 ) -> AnyElement {
     let drag_selection = Rc::clone(&selection);
     let drag_layout = layout.clone();
     let drag_text = text.clone();
+    let drag_mapping = mapping.clone();
+    let nowrap = mapping.preformatted;
     div()
         .id(("selection", index))
-        .w_full()
+        .when(!nowrap, |text| text.w_full())
+        .when(nowrap, |text| text.flex_none().whitespace_nowrap())
         .min_w_0()
         .cursor_text()
         .on_mouse_down(MouseButton::Left, move |event, _window, cx| {
@@ -29,7 +36,7 @@ pub(crate) fn wrap(
                 .unwrap_or_else(|nearest| nearest);
             selection.borrow_mut().start(Position {
                 block: index,
-                byte: boundary(&text, byte),
+                byte: mapping.to_source(boundary(&text, byte)),
             });
             cx.notify(owner);
         })
@@ -42,7 +49,7 @@ pub(crate) fn wrap(
                 .unwrap_or_else(|nearest| nearest);
             if drag_selection.borrow_mut().extend(Position {
                 block: index,
-                byte: boundary(&drag_text, byte),
+                byte: drag_mapping.to_source(boundary(&drag_text, byte)),
             }) {
                 cx.notify(owner);
             }

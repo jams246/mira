@@ -6,6 +6,7 @@ mod render_block;
 mod render_text;
 mod selection;
 mod selection_text;
+mod text_map;
 mod timing;
 mod viewer;
 
