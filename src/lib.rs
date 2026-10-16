@@ -3,4 +3,5 @@
 #![deny(missing_docs)]
 
 pub mod document;
+pub mod links;
 pub mod markdown;
