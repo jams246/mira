@@ -60,8 +60,7 @@ impl InlineState {
 
     pub(super) fn end_image(&mut self) -> Option<Inline> {
         let image = self.images.pop()?;
-        if let Some(parent) = self.images.last_mut() {
-            parent.alt.push_str(&image.alt);
+        if !self.images.is_empty() {
             return None;
         }
         Some(Inline {
@@ -80,7 +79,7 @@ impl InlineState {
         range: Range<usize>,
         code: bool,
     ) -> Option<Inline> {
-        if let Some(image) = self.images.last_mut() {
+        if let Some(image) = self.images.first_mut() {
             image.alt.push_str(&value);
             return None;
         }

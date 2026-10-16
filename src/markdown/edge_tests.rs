@@ -177,3 +177,26 @@ fn all_source_ranges_remain_valid_utf8_boundaries() {
 fn literal_text_accessor_rejects_mismatched_source_without_panicking() {
     assert_eq!(Text::Source(1..5).as_str("é"), "");
 }
+
+#[test]
+fn nested_images_flatten_alt_in_source_order_and_keep_outer_link() {
+    let document = parse(
+        "[![prefix ![one](one.png) middle ![two **bold**](two.png) suffix](outer.png)](next.md)"
+            .into(),
+    );
+    let BlockKind::Image { target, alt, link } = &document.blocks[0].kind else {
+        panic!("Expected outer image");
+    };
+    assert_eq!(
+        (
+            text(&document, alt),
+            document.targets[*target].as_str(),
+            link.map(|index| document.targets[index].as_str()),
+        ),
+        (
+            "prefix one middle two bold suffix".into(),
+            "outer.png",
+            Some("next.md"),
+        )
+    );
+}
