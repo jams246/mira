@@ -4,4 +4,5 @@
 
 pub mod document;
 pub mod links;
+pub mod local_image;
 pub mod markdown;
