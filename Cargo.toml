@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 gpui = { version = "=0.2.2", default-features = false, features = ["windows-manifest"] }
+image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp"] }
 pulldown-cmark = { version = "=0.13.4", default-features = false }
 
 [profile.release]
