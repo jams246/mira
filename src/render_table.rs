@@ -40,7 +40,8 @@ pub(crate) fn row(
         && target.block == index
         && let Some(column) = target.cell
     {
-        let left = column as f32 * COLUMN_WIDTH;
+        let left = (column as f32 * COLUMN_WIDTH)
+            .min((cells.len() as f32 * COLUMN_WIDTH - resources.width).max(0.));
         let visible_left = -f32::from(scroll.offset().x);
         if left < visible_left || left + COLUMN_WIDTH > visible_left + resources.width {
             scroll.set_offset(gpui::point(px(-left), scroll.offset().y));

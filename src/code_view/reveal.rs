@@ -28,7 +28,7 @@ pub(super) fn prepare(
     );
     if line.ascii {
         let x = bounds.left() + advance * layout.column_for_byte(&line, target.byte) as f32;
-        crate::reveal::horizontal(&view.resources, view.block, x, cx);
+        crate::reveal::horizontal_coarse(&view.resources, view.block, x, cx);
     } else if line.bytes.len() >= MIN_UNICODE_BYTES {
         let source = Source {
             block: view.block,
@@ -47,7 +47,12 @@ pub(super) fn prepare(
         let pending = x.is_none() && !state.complete;
         drop(state);
         if let Some(x) = x {
-            crate::reveal::horizontal(&view.resources, view.block, bounds.left() + px(x), cx);
+            crate::reveal::horizontal_coarse(
+                &view.resources,
+                view.block,
+                bounds.left() + px(x),
+                cx,
+            );
         } else if pending {
             CodeCache::demand(&view.resources.codes, &entry, f32::INFINITY, window, cx);
             return Some(row);

@@ -61,6 +61,7 @@ impl Viewer {
         let match_case = self.find.match_case;
         let location = self.location();
         let executor = cx.background_executor().clone();
+        let search_timing = Timing::start();
         let timer = executor.timer(Duration::from_millis(150));
         self.find.task = Some(cx.spawn_in(window, async move |viewer, cx| {
             timer.await;
@@ -92,6 +93,7 @@ impl Viewer {
                 }
                 cx.notify();
                 timing.mark("find_publish_callback");
+                search_timing.mark("find_results_ready");
             });
         }));
         cx.notify();

@@ -1,17 +1,21 @@
 mod coarse;
+mod horizontal;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use coarse::coarse;
+pub(crate) use coarse::{coarse, horizontal_coarse};
+pub(crate) use horizontal::horizontal;
 
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, ops::Range, rc::Rc};
 
 use gpui::{
     App, Bounds, EntityId, ListOffset, ListState, Pixels, Point, ShapedLine, TextLayout, point, px,
 };
 use mira::reading_state::Location;
 
-use crate::{render_context::RenderContext, selection::Position, text_map::TextMap};
+use crate::{
+    render_context::RenderContext, selection::Position, text_map::TextMap, timing::Timing,
+};
 
 pub(crate) type RevealHandle = Rc<RefCell<Reveal>>;
 
@@ -25,6 +29,8 @@ pub(crate) struct Reveal {
     coarse_scheduled: bool,
     sample: Option<(Pixels, Pixels)>,
     resolved: bool,
+    precise: bool,
+    timing: Timing,
 }
 
 impl Reveal {
@@ -39,10 +45,13 @@ impl Reveal {
             coarse_scheduled: false,
             sample: None,
             resolved: false,
+            precise: false,
+            timing: Timing::start(),
         }))
     }
 
     pub fn seek(&mut self, target: Location, cx: &mut App) {
+        self.timing = Timing::start();
         self.target = Some(target);
         self.reading = target;
         self.list.scroll_to(ListOffset {
@@ -56,6 +65,7 @@ impl Reveal {
         self.viewport = bounds;
         self.sample = None;
         self.resolved = false;
+        self.precise = false;
     }
 
     fn finish(&mut self, target: Location, position: Point<Pixels>, cx: &mut App) {
@@ -70,6 +80,7 @@ impl Reveal {
         self.target = None;
         self.reading = target;
         self.resolved = true;
+        self.timing.mark("semantic_reveal_ready");
         cx.notify(self.owner);
     }
 
@@ -101,27 +112,6 @@ fn inside(target: Location, position: Position, cell: Option<usize>, len: usize)
         && target.byte <= position.byte.saturating_add(len)
 }
 
-pub(crate) fn horizontal(resources: &RenderContext, block: usize, x: Pixels, cx: &mut App) {
-    let scrolls = resources.code_scrolls.borrow();
-    let Some(scroll) = scrolls.get(&block) else {
-        return;
-    };
-    let bounds = scroll.bounds();
-    if bounds.size.width <= px(0.) {
-        return;
-    }
-    let old = scroll.offset();
-    let shift = if x < bounds.left() + px(8.) {
-        bounds.left() + px(8.) - x
-    } else if x > bounds.right() - px(8.) {
-        bounds.right() - px(8.) - x
-    } else {
-        return;
-    };
-    scroll.set_offset(point((old.x + shift).min(px(0.)), old.y));
-    cx.notify(resources.owner);
-}
-
 pub(crate) fn observe(
     resources: &RenderContext,
     position: Position,
@@ -142,7 +132,10 @@ pub(crate) fn observe(
         && let Some(point) =
             layout.position_for_index(mapping.to_display(target.byte - position.byte))
     {
-        horizontal(resources, position.block, point.x, cx);
+        state.precise = true;
+        if horizontal(resources, position.block, point.x, cx) {
+            return;
+        }
         state.finish(target, point, cx);
         return;
     }
@@ -167,7 +160,7 @@ pub(crate) fn observe(
 pub(crate) fn observe_code(
     resources: &RenderContext,
     position: Position,
-    len: usize,
+    core: Range<usize>,
     mapping: &TextMap,
     line: &ShapedLine,
     geometry: (Point<Pixels>, Pixels),
@@ -176,13 +169,21 @@ pub(crate) fn observe_code(
     let (origin, line_height) = geometry;
     let mut state = resources.reveal.borrow_mut();
     if let Some(target) = state.target
-        && inside(target, position, None, len)
+        && code_inside(
+            target,
+            position,
+            &core,
+            position.byte + mapping.to_source(line.text.len()),
+        )
     {
         let point = point(
             origin.x + line.x_for_index(mapping.to_display(target.byte - position.byte)),
             origin.y,
         );
-        horizontal(resources, position.block, point.x, cx);
+        state.precise = true;
+        if horizontal(resources, position.block, point.x, cx) {
+            return;
+        }
         state.finish(target, point, cx);
         return;
     }
@@ -198,4 +199,15 @@ pub(crate) fn observe_code(
         let sample = point(origin.x + line.x_for_index(byte), origin.y);
         state.record(location, sample);
     }
+}
+
+fn code_inside(
+    target: Location,
+    position: Position,
+    core: &Range<usize>,
+    window_end: usize,
+) -> bool {
+    target.block == position.block
+        && target.cell.is_none()
+        && (core.contains(&target.byte) || target.byte == core.end && core.end == window_end)
 }

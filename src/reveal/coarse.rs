@@ -44,3 +44,17 @@ pub(crate) fn coarse(handle: &RevealHandle, block: usize, top: Pixels, cx: &mut 
         }
     });
 }
+
+pub(crate) fn horizontal_coarse(resources: &RenderContext, block: usize, x: Pixels, cx: &mut App) {
+    let target = resources.reveal.borrow().target;
+    let resources = resources.clone();
+    // Native paint can resolve a visible core before this coarse scroll is needed.
+    cx.defer(move |cx| {
+        let state = resources.reveal.borrow();
+        let run = target.is_some() && state.target == target && !state.precise;
+        drop(state);
+        if run {
+            horizontal(&resources, block, x, cx);
+        }
+    });
+}

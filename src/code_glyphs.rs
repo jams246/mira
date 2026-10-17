@@ -133,7 +133,7 @@ impl CodeGlyphs {
                     block: self.source.block,
                     byte: chunk.window.start,
                 },
-                chunk.window.len(),
+                chunk.core.clone(),
                 &piece.mapping,
                 &piece.line,
                 (origin, self.bounds.size.height),

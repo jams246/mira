@@ -57,3 +57,21 @@ fn new_frame_allows_scrolled_reading_position_and_rejects_horizontal_overscan() 
     let outside = Bounds::new(point(px(700.), px(110.)), gpui::size(px(100.), px(24.)));
     assert_eq!((state.reading.byte, state.samples(outside)), (5000, false));
 }
+
+#[test]
+fn unicode_code_reveal_ignores_unpainted_context_and_accepts_final_endpoint() {
+    let position = Position {
+        block: 2,
+        byte: 100,
+    };
+    let target = |byte| Location {
+        block: 2,
+        byte,
+        ..Location::default()
+    };
+    assert!(!code_inside(target(120), position, &(150..200), 250));
+    assert!(!code_inside(target(220), position, &(150..200), 250));
+    assert!(!code_inside(target(200), position, &(150..200), 250));
+    assert!(code_inside(target(175), position, &(150..200), 250));
+    assert!(code_inside(target(200), position, &(150..200), 200));
+}
