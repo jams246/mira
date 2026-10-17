@@ -130,9 +130,11 @@ impl Viewer {
     pub(crate) fn zoom_percent(&self) -> u16 {
         self.zoom
     }
+    #[cfg(test)]
     pub(crate) fn can_back(&self) -> bool {
         self.history.can_back()
     }
+    #[cfg(test)]
     pub(crate) fn can_forward(&self) -> bool {
         self.history.can_forward()
     }

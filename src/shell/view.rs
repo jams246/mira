@@ -34,8 +34,28 @@ impl Shell {
                     } else {
                         palette.background
                     })
-                    .border_r_1()
+                    .border_l(px(5.))
+                    .border_r(px(5.))
                     .border_color(palette.border)
+                    .child(
+                        controls::button(
+                            ("close-tab", id),
+                            "×",
+                            "Close tab (Ctrl+W)",
+                            true,
+                            palette,
+                            {
+                                let shell = cx.weak_entity();
+                                move |window, cx| {
+                                    let _ =
+                                        shell.update(cx, |shell, cx| shell.close(id, window, cx));
+                                }
+                            },
+                        )
+                        .rounded_none()
+                        .border_color(palette.border)
+                        .bg(palette.border),
+                    )
                     .child(
                         controls::button(
                             ("select-tab", id),
@@ -51,22 +71,11 @@ impl Shell {
                         .accessible_role(gpui::AccessibilityRole::Tab)
                         .accessible_selected(self.order.active == Some(id))
                         .accessible_set_position(index + 1, self.tabs.len())
+                        .rounded_none()
+                        .border_color(gpui::transparent_black())
                         .max_w(px(180.))
                         .overflow_hidden(),
                     )
-                    .child(controls::button(
-                        ("close-tab", id),
-                        "×",
-                        "Close tab (Ctrl+W)",
-                        true,
-                        palette,
-                        {
-                            let shell = cx.weak_entity();
-                            move |window, cx| {
-                                let _ = shell.update(cx, |shell, cx| shell.close(id, window, cx));
-                            }
-                        },
-                    ))
             }))
     }
 }

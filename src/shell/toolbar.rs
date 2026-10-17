@@ -19,8 +19,6 @@ impl Shell {
         let requested = state
             .as_ref()
             .is_some_and(|reader| reader.requested_path().is_some());
-        let back = state.as_ref().is_some_and(|reader| reader.can_back());
-        let forward = state.as_ref().is_some_and(|reader| reader.can_forward());
         let headings = state.as_ref().is_some_and(|reader| reader.has_headings());
         let zoom = state.as_ref().map_or(100, |reader| reader.zoom_percent());
         let reader_button =
@@ -56,18 +54,11 @@ impl Shell {
             .border_b_1()
             .border_color(palette.border)
             .child(reader_button(
-                "back",
-                "‹".into(),
-                "Back (Alt+Left)",
-                back,
-                Viewer::back,
-            ))
-            .child(reader_button(
-                "forward",
-                "›".into(),
-                "Forward (Alt+Right)",
-                forward,
-                Viewer::forward,
+                "contents",
+                "≡".into(),
+                "Table of Contents (Ctrl+Shift+O)",
+                headings,
+                Viewer::toggle_contents,
             ))
             .child(controls::button(
                 "open",
@@ -87,19 +78,13 @@ impl Shell {
                 Viewer::reload,
             ))
             .child(reader_button(
-                "contents",
-                "≡".into(),
-                "Table of Contents (Ctrl+Shift+O)",
-                headings,
-                Viewer::toggle_contents,
-            ))
-            .child(reader_button(
                 "find",
                 "Find".into(),
                 "Find (Ctrl+F)",
                 loaded,
                 Viewer::open_find,
             ))
+            .child(div().flex_1())
             .child(reader_button(
                 "zoom-out",
                 "-".into(),
