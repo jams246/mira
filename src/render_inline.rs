@@ -1,12 +1,13 @@
 use std::rc::Rc;
 
-use gpui::{AnyElement, App, IntoElement, TextAlign, Window, div, prelude::*};
+use gpui::{AnyElement, App, IntoElement, Window};
 use mira::document::{Document, Inline};
+use mira::flow_index::FlowIndex;
 
 use crate::{
-    inline_flow::{self, Piece},
+    flow_cache::Input,
+    flow_view::{self, FlowView},
     render_context::RenderContext,
-    render_image::{self, ImageContent},
     render_text::{self, TextFormat},
     selection::Position,
     wrapped_text::WrappedText,
@@ -33,61 +34,36 @@ pub(crate) fn content(
         }
         return text(document, position, inlines, format, resources);
     }
-    let mut output = div()
-        .w_full()
-        .min_w_0()
-        .flex()
-        .flex_wrap()
-        .items_baseline()
-        .when(format.align == TextAlign::Center, |row| {
-            row.justify_center()
-        })
-        .when(format.align == TextAlign::Right, |row| row.justify_end());
-    for piece in inline_flow::pieces(document, inlines) {
-        output = match piece {
-            Piece::Text { byte, runs } => output.child(text(
-                document,
-                Position {
-                    byte: position.byte + byte,
-                    ..position
-                },
-                &runs,
-                TextFormat {
-                    inline: true,
-                    ..format
-                },
-                resources,
-            )),
-            Piece::Image { byte, index } => {
-                let inline = &inlines[index];
-                if let Some(target) = inline.image {
-                    output.child(render_image::image(
-                        document,
-                        Position {
-                            byte: position.byte + byte,
-                            ..position
-                        },
-                        ImageContent {
-                            target,
-                            alt: std::slice::from_ref(inline),
-                            link: inline.link,
-                            occurrence: index,
-                        },
-                        resources,
-                        window,
-                        cx,
-                    ))
-                } else {
-                    output
-                }
-            }
-            Piece::Break => output.child(div().w_full().h_0()),
-        };
+    if needs_flow(document, inlines) {
+        return FlowView::new(position, format, resources).into_any_element();
     }
-    output.into_any_element()
+    let index = FlowIndex::new(document, inlines);
+    flow_view::row::build(
+        &index,
+        0..index.pieces().len(),
+        &Input {
+            resources,
+            position,
+            format,
+            width: resources.width,
+        },
+        false,
+        None,
+        window,
+        cx,
+    )
 }
 
-fn text(
+fn needs_flow(document: &Document, inlines: &[Inline]) -> bool {
+    inlines.len() > 256
+        || inlines
+            .iter()
+            .map(|run| run.text.as_str(&document.source).len())
+            .sum::<usize>()
+            >= 32 * 1024
+}
+
+pub(crate) fn text(
     document: &Document,
     position: Position,
     runs: &[Inline],
@@ -103,4 +79,24 @@ fn text(
         Rc::clone(&resources.selection),
         resources.owner,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mira::{document::BlockKind, markdown};
+
+    #[test]
+    fn empty_alt_occurrences_use_virtual_flow_even_without_semantic_bytes() {
+        let document = markdown::parse("![](one.png)".repeat(10_000));
+        let BlockKind::Paragraph(runs) = &document.blocks[0].kind else {
+            panic!("paragraph")
+        };
+        assert_eq!(runs.len(), 10_000);
+        assert!(
+            runs.iter()
+                .all(|run| run.text.as_str(&document.source).is_empty())
+        );
+        assert!(needs_flow(&document, runs));
+    }
 }

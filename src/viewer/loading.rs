@@ -11,6 +11,7 @@ impl Viewer {
         let generation = self.generation;
         self.loaded = None;
         self.texts = None;
+        self.flows = None;
         if let Some(images) = self.images.take() {
             images.borrow_mut().clear(window, cx);
         }

@@ -3,8 +3,9 @@
 mod code_view;
 mod content_paint;
 mod file;
+mod flow_cache;
+mod flow_view;
 mod image_cache;
-mod inline_flow;
 mod reader;
 mod render_block;
 mod render_context;

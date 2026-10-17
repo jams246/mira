@@ -26,6 +26,32 @@ fn image(width: u32, height: u32) -> CachedImage {
 }
 
 #[test]
+fn measurement_peeks_do_not_start_decoding_or_change_demand() {
+    let loaded = Arc::new(LoadedDocument {
+        path: PathBuf::new(),
+        document: mira::markdown::parse("![alt](one.png)".into()),
+        read_time: Duration::ZERO,
+        parse_time: Duration::ZERO,
+        code: HashMap::new(),
+        code_index_time: Duration::ZERO,
+    });
+    let handle = ImageCache::new(loaded, EntityId::from(1));
+    let mut cache = handle.borrow_mut();
+    assert!(matches!(cache.peek(0), ImageStatus::Loading));
+    assert!(cache.entries.is_empty());
+    assert!(cache.demand.is_empty());
+    assert_eq!(cache.geometry_revision(), 0);
+    cache.prepare("one.png".into(), Ok(image(32, 16)));
+    let revision = cache.geometry_revision();
+    assert!(revision > 0);
+    assert!(matches!(cache.peek(0), ImageStatus::Ready(_)));
+    cache.fail("one.png".into(), "test failure".into());
+    assert!(cache.geometry_revision() > revision);
+    assert!(matches!(cache.peek(0), ImageStatus::Failed(_)));
+    assert!(cache.demand.is_empty());
+}
+
+#[test]
 fn decoded_cache_evicts_offscreen_least_recently_used_image_at_64_mib() {
     let handle = cache();
     let mut cache = handle.borrow_mut();

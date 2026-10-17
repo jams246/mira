@@ -37,6 +37,7 @@ pub(crate) struct ImageCache {
     demand: HashSet<String>,
     bytes: usize,
     clock: u64,
+    revision: u64,
     closed: bool,
 }
 
@@ -49,12 +50,30 @@ impl ImageCache {
             demand: HashSet::new(),
             bytes: 0,
             clock: 0,
+            revision: 0,
             closed: false,
         }))
     }
 
     pub(crate) fn begin_frame(&mut self) {
         self.demand.clear();
+    }
+
+    pub(crate) fn geometry_revision(&self) -> u64 {
+        self.revision
+    }
+
+    pub(crate) fn peek(&self, target: usize) -> ImageStatus {
+        let Some(raw) = self.loaded.document.targets.get(target) else {
+            return ImageStatus::Failed("Invalid local image destination.".into());
+        };
+        match mira::links::decode(raw) {
+            Ok(destination) => self
+                .entries
+                .get(&destination)
+                .map_or(ImageStatus::Loading, |entry| entry.status.clone()),
+            Err(error) => ImageStatus::Failed(error),
+        }
     }
 
     pub(crate) fn request(

@@ -40,10 +40,13 @@ pub(crate) fn row(
     let minimum = resources.tables.borrow_mut().minimum(index, window);
     let tables = Rc::clone(&resources.tables);
     let texts = Rc::clone(&resources.texts);
+    let flows = Rc::clone(&resources.flows);
     let observed_columns = columns.clone();
     let measure = canvas(
         move |bounds, _, _| {
-            if texts.borrow().height_known(index, &observed_columns) {
+            if texts.borrow().height_known(index, &observed_columns)
+                && flows.borrow().height_known(index, &observed_columns)
+            {
                 tables.borrow_mut().observe(index, bounds.size.height);
             }
         },

@@ -6,6 +6,7 @@ use std::{rc::Rc, sync::Arc};
 use crate::{
     content_paint::ContentPaint,
     file::LoadedDocument,
+    flow_cache::{self, FlowCache},
     image_cache::{CacheHandle, ImageCache},
     reader,
     render_context::RenderContext,
@@ -55,6 +56,7 @@ pub(crate) struct Viewer {
     table_scrolls: TableScrolls,
     images: Option<CacheHandle>,
     texts: Option<text_cache::CacheHandle>,
+    flows: Option<flow_cache::CacheHandle>,
 }
 
 impl Viewer {
@@ -79,6 +81,7 @@ impl Viewer {
             table_scrolls: TableScrolls::default(),
             images: None,
             texts: None,
+            flows: None,
         }
     }
 
@@ -172,6 +175,9 @@ impl Render for Viewer {
             let texts = self
                 .texts
                 .get_or_insert_with(|| TextCache::new(Arc::clone(loaded), window.current_view()));
+            let flows = self
+                .flows
+                .get_or_insert_with(|| FlowCache::new(Arc::clone(loaded), window.current_view()));
             let activate_link = Rc::new(cx.processor(Self::activate_link));
             return root
                 .when_some(self.link_error.clone(), |root, message| {
@@ -197,6 +203,7 @@ impl Render for Viewer {
                         tables: Rc::clone(&self.table_scrolls),
                         images: Rc::clone(images),
                         texts: Rc::clone(texts),
+                        flows: Rc::clone(flows),
                         cell: None,
                         paint: self.content_paint.clone(),
                         owner: window.current_view(),

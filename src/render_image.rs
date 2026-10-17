@@ -24,12 +24,18 @@ pub(crate) fn image(
     resources: &RenderContext,
     window: &mut Window,
     cx: &mut App,
+    request: bool,
 ) -> AnyElement {
     let id = gpui::SharedString::from(format!(
         "image-{}-{}-{}",
         position.block, position.byte, content.occurrence
     ));
-    let image = match ImageCache::request(&resources.images, content.target, window, cx) {
+    let status = if request {
+        ImageCache::request(&resources.images, content.target, window, cx)
+    } else {
+        resources.images.borrow().peek(content.target)
+    };
+    let image = match status {
         ImageStatus::Ready(image) => image,
         ImageStatus::Loading => {
             return placeholder(

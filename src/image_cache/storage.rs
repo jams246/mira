@@ -9,6 +9,7 @@ impl ImageCache {
         target: String,
         result: Result<CachedImage, String>,
     ) -> (Option<PreviewPlan>, Vec<Arc<RenderImage>>) {
+        self.revision = self.revision.wrapping_add(1);
         let image = match result {
             Ok(image) => image,
             Err(error) => {
@@ -60,6 +61,7 @@ impl ImageCache {
     }
 
     pub(super) fn fail(&mut self, target: String, error: String) {
+        self.revision = self.revision.wrapping_add(1);
         self.clock = self.clock.wrapping_add(1);
         self.entries.insert(
             target,
@@ -71,6 +73,7 @@ impl ImageCache {
     }
 
     pub(super) fn apply(&mut self, images: PreviewPlan) -> Vec<Arc<RenderImage>> {
+        self.revision = self.revision.wrapping_add(1);
         let mut evicted = Vec::new();
         for (target, image) in images {
             self.bytes += image.bytes();

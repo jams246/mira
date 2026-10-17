@@ -135,6 +135,7 @@ pub(crate) fn block(
                 &resources,
                 window,
                 cx,
+                true,
             ));
         }
     }

@@ -21,7 +21,7 @@ pub(crate) enum TextKind {
     Code,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub(crate) struct TextFormat {
     pub kind: TextKind,
     pub align: TextAlign,
