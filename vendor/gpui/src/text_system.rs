@@ -338,7 +338,6 @@ pub struct WindowTextSystem {
 }
 
 /// Completed native layouts that can be retained without locking their shaper.
-#[derive(Clone)]
 pub struct BackgroundTextLayouts {
     text_system: Arc<TextSystem>,
     layouts: CachedLineLayouts,

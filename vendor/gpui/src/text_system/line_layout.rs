@@ -404,7 +404,6 @@ struct FrameCache {
     used_wrapped_lines: Vec<Arc<CacheKey>>,
 }
 
-#[derive(Clone, Default)]
 pub(crate) struct CachedLineLayouts {
     lines: FxHashMap<Arc<CacheKey>, Arc<LineLayout>>,
     wrapped_lines: FxHashMap<Arc<CacheKey>, Arc<WrappedLineLayout>>,

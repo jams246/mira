@@ -44,7 +44,6 @@ pub struct AccessibilitySnapshot {
 }
 
 /// An action requested through the native accessibility provider.
-#[derive(Clone)]
 pub enum AccessibilityAction {
     /// Move keyboard focus without activating the control.
     Focus,
