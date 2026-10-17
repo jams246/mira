@@ -26,9 +26,13 @@ use viewer::Viewer;
 fn main() {
     let timing = Timing::start();
     let initial_path = std::env::args_os().nth(1).map(std::path::PathBuf::from);
-    Application::new().run(move |cx: &mut App| {
+    let application = Application::new();
+    timing.mark("platform_created");
+    application.run(move |cx: &mut App| {
+        timing.mark("event_loop_ready");
         viewer::bind_keys(cx);
         let bounds = Bounds::centered(None, size(px(1000.), px(760.)), cx);
+        timing.mark("window_open_start");
         let result = cx.open_window(
             WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
