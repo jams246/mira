@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use gpui::{
-    AnyView, App, AppContext, Context, Div, ElementId, KeyBinding, SharedString, Stateful, Window,
-    actions, div, prelude::*, px,
+    AnyView, App, AppContext, ClickEvent, Context, Div, ElementId, KeyBinding, SharedString,
+    Stateful, Window, actions, div, prelude::*, px,
 };
 
 use crate::appearance::Palette;
@@ -27,6 +27,7 @@ pub(crate) fn button(
     let activate = Rc::new(activate);
     let click = Rc::clone(&activate);
     let description = description.into();
+    let label = label.into();
     div()
         .id(id)
         .key_context("MiraButton")
@@ -49,9 +50,9 @@ pub(crate) fn button(
                 .focus(move |style| style.border_color(palette.link))
         })
         .tooltip(move |_, cx| tip(description.clone(), palette, cx))
-        .on_click(move |_, window, cx| {
+        .on_click(move |event, window, cx| {
             cx.stop_propagation();
-            if enabled {
+            if enabled && matches!(event, ClickEvent::Mouse(_)) {
                 click(window, cx);
             }
         })
@@ -60,7 +61,7 @@ pub(crate) fn button(
                 activate(window, cx);
             }
         })
-        .child(label.into())
+        .child(label)
 }
 
 pub(crate) fn tip(text: SharedString, palette: Palette, cx: &mut App) -> AnyView {
