@@ -1,4 +1,5 @@
 pub(crate) mod measure;
+pub(crate) mod span;
 #[cfg(test)]
 mod tests;
 mod work;
@@ -39,6 +40,7 @@ pub(crate) struct Entry {
     images: usize,
     pub complete: bool,
     scheduled: bool,
+    pub pending: Option<span::Span>,
 }
 
 impl Entry {
@@ -69,7 +71,17 @@ impl Entry {
                     / self.cursor as f32
             });
         let extra = byte_estimate.max(piece_estimate);
-        (self.height + extra).max(self.config.line_height)
+        let pending = self.pending_row().map_or(0., |row| row.top + row.height);
+        (self.height + extra)
+            .max(pending)
+            .max(self.config.line_height)
+    }
+
+    pub(crate) fn pending_row(&self) -> Option<Row> {
+        let span = self.pending.as_ref()?;
+        let mut row = span.row.clone()?;
+        row.height = span.height(self.config.line_height);
+        Some(row)
     }
 }
 
@@ -112,6 +124,7 @@ impl FlowCache {
             images: runs.iter().filter(|run| run.image.is_some()).count(),
             complete: false,
             scheduled: false,
+            pending: None,
         }));
         cache.entries.insert(source, Rc::clone(&entry));
         entry

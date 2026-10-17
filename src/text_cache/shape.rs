@@ -12,6 +12,8 @@ pub(super) struct Input {
     pub context_start: usize,
     pub row: usize,
     pub target: usize,
+    pub intrinsic: IntrinsicWidth,
+    pub natural_width: f32,
 }
 
 pub(super) struct Batch {
@@ -21,6 +23,8 @@ pub(super) struct Batch {
     pub context_start: usize,
     pub rows: usize,
     pub len: usize,
+    pub intrinsic: IntrinsicWidth,
+    pub natural_width: f32,
 }
 
 pub(super) fn batch(
@@ -31,21 +35,31 @@ pub(super) fn batch(
 ) -> Result<Batch, String> {
     let runs = source.runs(document);
     let index = input.index;
+    let range = source.bounds(index.len())?;
+    if index.floor_boundary(document, runs, range.start) != range.start
+        || index.floor_boundary(document, runs, range.end) != range.end
+    {
+        return Err("Native text span splits UTF-8.".into());
+    }
     let mut result = Batch {
-        len: index.len(),
+        len: range.end,
         index,
         chunks: Vec::new(),
         cursor: input.cursor,
         context_start: input.context_start,
         rows: input.row,
+        intrinsic: input.intrinsic,
+        natural_width: input.natural_width,
     };
     let start = Instant::now();
     while result.cursor < result.len && result.rows < input.target {
         let mut budget = 1024;
         let (end, boundaries) = loop {
-            let end = result
-                .index
-                .floor_boundary(document, runs, result.cursor + budget);
+            let end = result.index.floor_boundary(
+                document,
+                runs,
+                (result.cursor + budget).min(result.len),
+            );
             let slice = result
                 .index
                 .slice(document, runs, result.context_start..end);
@@ -73,6 +87,16 @@ pub(super) fn batch(
                 if base <= end - result.context_start {
                     boundaries.push(base);
                 }
+            }
+            let natural_width = lines
+                .iter()
+                .map(|line| f32::from(line.unwrapped_layout.width))
+                .fold(0., f32::max);
+            result.natural_width = result.natural_width.max(natural_width);
+            if lines.iter().any(|line| !line.wrap_boundaries().is_empty())
+                || natural_width > input.config.width
+            {
+                result.intrinsic = IntrinsicWidth::Full;
             }
             if end == result.len
                 || boundaries
@@ -105,6 +129,9 @@ pub(super) fn batch(
         result.context_start += boundaries.iter().rev().nth(1).copied().unwrap_or(0);
         result.cursor = committed;
         result.rows += rows;
+        if final_chunk && result.intrinsic != IntrinsicWidth::Full {
+            result.intrinsic = IntrinsicWidth::Exact(result.natural_width);
+        }
         if start.elapsed() >= Duration::from_millis(4) || result.chunks.len() == 64 {
             break;
         }

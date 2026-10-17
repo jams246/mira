@@ -11,13 +11,25 @@ pub(super) fn advance(
     window: &mut Window,
     cx: &mut App,
 ) {
-    let source = Source {
-        block: input.position.block,
-        cell: input.resources.cell,
-    };
+    let source = Source::whole(input.position.block, input.resources.cell);
     let mut state = entry.borrow_mut();
     if state.complete || state.height >= target {
         return;
+    }
+    if let Some(mut span) = state.pending.take() {
+        if span.row.is_none() && super::span::known(&span) {
+            // Native width is known; remeasure the carried flex row before committing it.
+        } else if !span.text.borrow().complete {
+            span.demand(&input, target, state.config.line_height, window, cx);
+            state.pending = Some(span);
+            return;
+        } else if let Some(mut row) = span.row.take() {
+            debug_assert!(row.pieces.end > state.cursor);
+            row.height = span.height(state.config.line_height);
+            state.cursor = row.pieces.end;
+            state.height = row.top + row.height;
+            state.rows.push(row);
+        }
     }
     let Some(index) = state.index.clone() else {
         if state.scheduled {
@@ -53,25 +65,33 @@ pub(super) fn advance(
     let timing = Timing::start();
     let mut iterations = 0;
     while state.cursor < index.pieces().len() && state.height < target {
-        let rows = measure::next(&index, state.cursor, &input, window, cx);
-        if let Some(last) = rows.last() {
+        let mut batch = measure::next(&index, state.cursor, &input, window, cx);
+        let top = state.height;
+        if let Some(last) = batch.rows.last() {
             let measured_height = last.top + last.height;
             state.cursor = last.pieces.end;
-            let top = state.height;
-            state.rows.extend(rows.into_iter().map(|mut row| {
+            state.rows.extend(batch.rows.into_iter().map(|mut row| {
                 row.top += top;
                 row
             }));
             state.height += measured_height;
-        } else {
+        } else if batch.span.is_none() {
             state.cursor = index.pieces().len();
+        }
+        if let Some(mut span) = batch.span.take() {
+            if let Some(row) = &mut span.row {
+                row.top += top;
+            }
+            span.demand(&input, target, state.config.line_height, window, cx);
+            state.pending = Some(span);
+            break;
         }
         iterations += 1;
         if start.elapsed() >= Duration::from_millis(4) || iterations == 64 {
             break;
         }
     }
-    state.complete = state.cursor == index.pieces().len();
+    state.complete = state.cursor == index.pieces().len() && state.pending.is_none();
     timing.mark("flow_checkpoint_batch");
     if !state.scheduled {
         state.scheduled = true;

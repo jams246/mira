@@ -73,10 +73,7 @@ impl Element for FlowView {
         let result = Rc::new(RefCell::new(None));
         let measured = Rc::clone(&result);
         let resources = self.resources.clone();
-        let source = Source {
-            block: self.position.block,
-            cell: resources.cell,
-        };
+        let source = Source::whole(self.position.block, resources.cell);
         let format = self.format;
         let id =
             window.request_measured_layout(Default::default(), move |known, available, _, _| {
@@ -149,7 +146,13 @@ impl Element for FlowView {
             width: bounds.size.width.into(),
         };
         let mut children = Vec::new();
-        for row in entry.rows[start..].iter().take_while(|row| row.top <= last) {
+        for row in entry.rows[start..]
+            .iter()
+            .cloned()
+            .chain(entry.pending_row())
+            .filter(|row| row.top + row.height >= first)
+            .take_while(|row| row.top <= last)
+        {
             let mut child = row::build(index, row.pieces.clone(), &input, false, None, window, cx);
             let row_bounds = Bounds::new(
                 point(bounds.left(), bounds.top() + px(row.top)),

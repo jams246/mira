@@ -6,7 +6,10 @@ use gpui::{
 };
 use mira::flow_index::FlowIndex;
 
-use super::Row;
+use super::{
+    Row,
+    span::{self, Span},
+};
 use crate::{
     flow_view::row, render_context::RenderContext, render_text::TextFormat, selection::Position,
 };
@@ -18,13 +21,18 @@ pub(crate) struct Input<'a> {
     pub width: f32,
 }
 
+pub(super) struct Batch {
+    pub rows: Vec<Row>,
+    pub span: Option<Span>,
+}
+
 pub(super) fn next(
     index: &FlowIndex,
     cursor: usize,
     input: &Input<'_>,
     window: &mut Window,
     cx: &mut App,
-) -> Vec<Row> {
+) -> Batch {
     let pieces = index.pieces();
     let mut count = 64;
     loop {
@@ -34,6 +42,16 @@ pub(super) fn next(
             end = (cursor + 1..end)
                 .find(|i| pieces[*i].range.start >= byte_end)
                 .unwrap_or(end);
+        }
+        let mut span = span::find(index, cursor..end, input, window);
+        if let Some(span) = &span {
+            end = span.piece + usize::from(span::known(span));
+        }
+        if end == cursor {
+            return Batch {
+                rows: Vec::new(),
+                span,
+            };
         }
         let ids = Rc::new(RefCell::new(Vec::new()));
         let mut native = row::build(index, cursor..end, input, true, Some(&ids), window, cx);
@@ -57,15 +75,26 @@ pub(super) fn next(
             })
             .collect::<Vec<_>>();
         let mut rows = group(&bounds, cursor);
+        if let Some(candidate) = span.as_mut() {
+            if span::known(candidate) {
+                if let Some(row) = rows.pop() {
+                    debug_assert!(row.pieces.contains(&candidate.piece));
+                    candidate.row = Some(row);
+                }
+            } else {
+                rows.pop();
+            }
+            return Batch { rows, span };
+        }
         if end == pieces.len() {
             if let Some(last) = rows.last_mut() {
                 last.pieces.end = end;
             }
-            return rows;
+            return Batch { rows, span: None };
         }
         if rows.len() > 1 {
             rows.pop();
-            return rows;
+            return Batch { rows, span: None };
         }
         // A native flex row is indivisible; grow only until its ending is known.
         count = count.saturating_mul(2).min(pieces.len() - cursor);

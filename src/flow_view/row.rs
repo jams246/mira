@@ -13,6 +13,7 @@ use crate::{
     render_text::TextFormat,
     selection::Position,
     text_cache::Source,
+    wrapped_text::WrappedText,
 };
 
 pub(crate) fn build(
@@ -26,11 +27,7 @@ pub(crate) fn build(
 ) -> AnyElement {
     let resources = input.resources;
     let document = &resources.loaded.document;
-    let runs = Source {
-        block: input.position.block,
-        cell: resources.cell,
-    }
-    .runs(document);
+    let runs = Source::whole(input.position.block, resources.cell).runs(document);
     let style = window.text_style();
     let font_size = style.font_size.to_pixels(window.rem_size());
     let line_height = style
@@ -59,6 +56,24 @@ pub(crate) fn build(
             ..input.position
         };
         let child = match piece.kind {
+            PieceKind::Text if piece.range.len() >= crate::flow_cache::span::MIN_SPAN_BYTES => {
+                let mut resources = resources.clone();
+                resources.width = input.width;
+                div()
+                    .flex_none()
+                    .max_w_full()
+                    .child(WrappedText::new_span(
+                        input.position,
+                        (piece.range.start, piece.range.end),
+                        TextFormat {
+                            inline: false,
+                            ..input.format
+                        },
+                        &resources,
+                        index.inline_index(),
+                    ))
+                    .into_any_element()
+            }
             PieceKind::Text => render_inline::text(
                 document,
                 position,

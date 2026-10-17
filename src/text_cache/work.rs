@@ -49,6 +49,8 @@ pub(super) fn schedule(
             context_start: state.context_start,
             row: state.rows,
             target: state.target,
+            intrinsic: state.intrinsic,
+            natural_width: state.natural_width,
         };
         drop(state);
         let timing = Timing::start();
@@ -63,10 +65,13 @@ pub(super) fn schedule(
                 state.rows = result.rows;
                 state.len = result.len;
                 state.complete = result.cursor == result.len;
+                state.intrinsic = result.intrinsic;
+                state.natural_width = result.natural_width;
             }
             Err(error) => {
                 state.error = Some(error);
                 state.complete = true;
+                state.intrinsic = IntrinsicWidth::Full;
             }
         }
         if state.complete {

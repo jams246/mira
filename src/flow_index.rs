@@ -1,6 +1,6 @@
 //! Source-backed word and image occurrences for native inline flex layout.
 
-use std::ops::Range;
+use std::{ops::Range, sync::Arc};
 
 use crate::{
     document::{Document, Inline},
@@ -36,7 +36,7 @@ pub struct Piece {
 /// pieces by their ordinal because consecutive empty images can share all byte
 /// coordinates. Non-LF Unicode whitespace follows `char::is_whitespace`.
 pub struct FlowIndex {
-    inlines: InlineIndex,
+    inlines: Arc<InlineIndex>,
     pieces: Vec<Piece>,
 }
 
@@ -76,7 +76,7 @@ impl FlowIndex {
         }
         flush(&mut pieces, &mut word_start, byte);
         Self {
-            inlines: InlineIndex::new(document, runs),
+            inlines: Arc::new(InlineIndex::new(document, runs)),
             pieces,
         }
     }
@@ -91,6 +91,11 @@ impl FlowIndex {
     /// A zero result does not imply that the flow has no image occurrences.
     pub fn text_len(&self) -> usize {
         self.inlines.len()
+    }
+
+    /// Shares the mother inline index with bounded native text span consumers.
+    pub fn inline_index(&self) -> Arc<InlineIndex> {
+        Arc::clone(&self.inlines)
     }
 
     /// Materializes only a requested semantic range through the shared index.

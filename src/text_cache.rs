@@ -1,11 +1,16 @@
 mod shape;
+mod source;
+#[cfg(test)]
+mod tests;
 mod work;
+
+pub(crate) use source::Source;
 
 use std::{cell::RefCell, collections::HashMap, ops::Range, rc::Rc, sync::Arc};
 
 use gpui::{App, EntityId, Window};
 use mira::{
-    document::{BlockKind, Document, Inline},
+    document::{Document, Inline},
     inline_index::InlineIndex,
 };
 
@@ -13,27 +18,6 @@ use crate::{file::LoadedDocument, render_text::TextKind, timing::Timing};
 
 pub(crate) type CacheHandle = Rc<RefCell<TextCache>>;
 pub(crate) type EntryHandle = Rc<RefCell<Entry>>;
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct Source {
-    pub block: usize,
-    pub cell: Option<usize>,
-}
-
-impl Source {
-    pub(crate) fn runs(self, document: &Document) -> &[Inline] {
-        match &document.blocks[self.block].kind {
-            BlockKind::Paragraph(runs)
-            | BlockKind::RawHtml(runs)
-            | BlockKind::Heading { runs, .. } => runs,
-            BlockKind::TableRow { cells, .. } => self
-                .cell
-                .and_then(|column| cells.get(column))
-                .map_or(&[], Vec::as_slice),
-            _ => &[],
-        }
-    }
-}
 
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) struct Config {
@@ -50,6 +34,13 @@ pub(crate) struct Chunk {
     pub skip_rows: usize,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum IntrinsicWidth {
+    Unknown,
+    Full,
+    Exact(f32),
+}
+
 pub(crate) struct Entry {
     config: Config,
     index: Option<Arc<InlineIndex>>,
@@ -60,6 +51,9 @@ pub(crate) struct Entry {
     len: usize,
     pub complete: bool,
     pub error: Option<String>,
+    start: usize,
+    intrinsic: IntrinsicWidth,
+    natural_width: f32,
     timing: Timing,
     target: usize,
     active: bool,
@@ -67,15 +61,21 @@ pub(crate) struct Entry {
 }
 
 impl Entry {
+    pub(crate) fn intrinsic_width(&self) -> IntrinsicWidth {
+        self.intrinsic
+    }
+
     pub(crate) fn estimated_rows(&self) -> usize {
         if self.complete {
             return self.rows.max(1);
         }
         let remaining = self.len.saturating_sub(self.cursor);
-        let estimate = if self.cursor > 0 {
-            remaining as f64 * self.rows as f64 / self.cursor as f64
+        let consumed = self.cursor.saturating_sub(self.start);
+        let estimate = if consumed > 0 {
+            remaining as f64 * self.rows as f64 / consumed as f64
         } else {
-            self.len as f64 / (self.config.width / (self.config.font_size * 0.5)).max(1.) as f64
+            self.len.saturating_sub(self.start) as f64
+                / (self.config.width / (self.config.font_size * 0.5)).max(1.) as f64
         };
         self.rows.saturating_add(estimate.ceil() as usize).max(1)
     }
@@ -87,7 +87,11 @@ impl Entry {
         range: Range<usize>,
     ) -> Vec<Inline> {
         self.index.as_ref().map_or_else(Vec::new, |index| {
-            index.slice(document, source.runs(document), range)
+            index.slice(
+                document,
+                source.runs(document),
+                range.start.max(self.start)..range.end.min(self.len),
+            )
         })
     }
 }
@@ -120,30 +124,52 @@ impl TextCache {
         cache: &CacheHandle,
         source: Source,
         config: Config,
-        _window: &mut Window,
-        _cx: &mut App,
+        seed: Option<Arc<InlineIndex>>,
     ) -> EntryHandle {
         let mut cache = cache.borrow_mut();
-        if let Some(entry) = cache.entries.get(&source)
-            && entry.borrow().config == config
-        {
-            return Rc::clone(entry);
+        if let Some(entry) = cache.entries.get(&source) {
+            let mut state = entry.borrow_mut();
+            if state.config == config {
+                if state.index.is_none() && seed.is_some() {
+                    state.index = seed;
+                }
+                drop(state);
+                return Rc::clone(entry);
+            }
         }
         let runs = source.runs(&cache.loaded.document);
-        let len = runs
-            .iter()
-            .map(|run| run.text.as_str(&cache.loaded.document.source).len())
-            .sum();
+        let len = seed.as_ref().map_or_else(
+            || {
+                runs.iter()
+                    .map(|run| run.text.as_str(&cache.loaded.document.source).len())
+                    .sum()
+            },
+            |index| index.len(),
+        );
+        let (range, error) = match source.bounds(len) {
+            Ok(range) => (range, None),
+            Err(error) => (0..0, Some(error)),
+        };
+        let complete = range.is_empty();
         let entry = Rc::new(RefCell::new(Entry {
             config,
-            index: None,
+            index: seed,
             chunks: Vec::new(),
-            cursor: 0,
-            context_start: 0,
+            cursor: range.start,
+            context_start: range.start,
             rows: 0,
-            len,
-            complete: false,
-            error: None,
+            len: range.end,
+            complete,
+            intrinsic: if error.is_some() {
+                IntrinsicWidth::Full
+            } else if complete {
+                IntrinsicWidth::Exact(0.)
+            } else {
+                IntrinsicWidth::Unknown
+            },
+            start: range.start,
+            error,
+            natural_width: 0.,
             timing: Timing::start(),
             target: 0,
             active: false,

@@ -50,6 +50,19 @@ fn pieces(index: &FlowIndex) -> Vec<(Range<usize>, PieceKind)> {
 }
 
 #[test]
+fn native_span_consumers_share_the_original_inline_metadata() {
+    let (document, flow) = paragraph("prefix **東京** [café](plain.md)");
+    let first = flow.inline_index();
+    let second = flow.inline_index();
+    assert!(Arc::ptr_eq(&first, &second));
+    assert_eq!(first.len(), flow.text_len());
+    let slice = first.slice(&document, runs(&document), 7..13);
+    assert_eq!(plain(&document, &slice), "東京");
+    assert!(slice[0].style.bold);
+    assert!(matches!(slice[0].text, Text::Source(_)));
+}
+
+#[test]
 fn styled_words_images_and_hard_breaks_keep_known_semantic_offsets() {
     let (document, index) = paragraph("ab**cd**ef ![First](one.png)  \n![](two.png) 東京");
     assert_eq!(

@@ -1,4 +1,7 @@
-use std::{cell::RefCell, rc::Rc};
+mod source;
+
+use mira::inline_index::InlineIndex;
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use gpui::{
     AnyElement, App, AvailableSpace, Bounds, ContentMask, Element, ElementId, GlobalElementId,
@@ -9,7 +12,7 @@ use crate::{
     render_context::RenderContext,
     render_text::{self, TextFormat},
     selection::Position,
-    text_cache::{Config, EntryHandle, Source, TextCache},
+    text_cache::{Config, EntryHandle, IntrinsicWidth, Source, TextCache},
 };
 
 pub(crate) struct WrappedText {
@@ -17,20 +20,7 @@ pub(crate) struct WrappedText {
     position: Position,
     format: TextFormat,
     resources: RenderContext,
-}
-
-impl WrappedText {
-    pub(crate) fn new(position: Position, format: TextFormat, resources: &RenderContext) -> Self {
-        Self {
-            source: Source {
-                block: position.block,
-                cell: resources.cell,
-            },
-            position,
-            format,
-            resources: resources.clone(),
-        }
-    }
+    seed: Option<Arc<InlineIndex>>,
 }
 
 impl IntoElement for WrappedText {
@@ -50,8 +40,8 @@ impl Element for WrappedText {
     fn id(&self) -> Option<ElementId> {
         Some(
             gpui::SharedString::from(format!(
-                "wrapped-{}-{}",
-                self.position.block, self.position.byte
+                "wrapped-{}-{}-{:?}",
+                self.position.block, self.position.byte, self.source.span
             ))
             .into(),
         )
@@ -77,17 +67,19 @@ impl Element for WrappedText {
         let result_for_measure = Rc::clone(&result);
         let resources = self.resources.clone();
         let source = self.source;
+        let seed = self.seed.clone();
         let kind = self.format.kind;
-        let layout = window.request_measured_layout(
-            Default::default(),
-            move |known, available, window, cx| {
-                let width = known
-                    .width
-                    .unwrap_or_else(|| match available.width {
+        let layout =
+            window.request_measured_layout(Default::default(), move |known, available, _, _| {
+                let width = if source.span.is_some() {
+                    px(resources.width)
+                } else {
+                    known.width.unwrap_or_else(|| match available.width {
                         AvailableSpace::Definite(width) => width,
                         _ => px(resources.width),
                     })
-                    .max(px(1.));
+                }
+                .max(px(1.));
                 let entry = TextCache::request(
                     &resources.texts,
                     source,
@@ -96,14 +88,18 @@ impl Element for WrappedText {
                         font_size: font_size.into(),
                         kind,
                     },
-                    window,
-                    cx,
+                    seed.clone(),
                 );
-                let height = line_height * entry.borrow().estimated_rows() as f32;
+                let state = entry.borrow();
+                let height = line_height * state.estimated_rows() as f32;
+                let width = match (source.span, state.intrinsic_width()) {
+                    (Some(_), IntrinsicWidth::Exact(exact)) => px(exact).min(width),
+                    _ => width,
+                };
+                drop(state);
                 result_for_measure.borrow_mut().replace(entry);
                 size(width, height)
-            },
-        );
+            });
         (layout, (result, line_height))
     }
 

@@ -4,10 +4,7 @@ use crate::render_text::TextKind;
 #[test]
 fn zero_byte_images_estimate_height_by_occurrence_and_advance_by_piece() {
     let document = mira::markdown::parse("![](one.png)".repeat(10_000));
-    let source = Source {
-        block: 0,
-        cell: None,
-    };
+    let source = Source::whole(0, None);
     let index = Arc::new(FlowIndex::new(&document, source.runs(&document)));
     let mut entry = Entry {
         config: Config {
@@ -25,6 +22,7 @@ fn zero_byte_images_estimate_height_by_occurrence_and_advance_by_piece() {
         images: 10_000,
         complete: false,
         scheduled: false,
+        pending: None,
     };
     assert!(entry.estimated_height() > 700.);
     entry.index = Some(index);
