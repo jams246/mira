@@ -57,7 +57,7 @@ impl Viewer {
         let cancel = Arc::clone(&self.find.cancel);
         let match_case = self.find.match_case;
         let executor = cx.background_executor().clone();
-        let timer = executor.timer(Duration::from_millis(150));
+        let timer = executor.timer(Duration::from_millis(25));
         let task = executor.spawn(async move {
             timer.await;
             search::search(&loaded.document, &query, match_case, &cancel)
