@@ -188,8 +188,9 @@ impl QueryInput {
     }
 
     pub(super) fn mouse_up(&mut self, _: &MouseUpEvent, _: &mut Window, cx: &mut Context<Self>) {
-        self.selecting = false;
-        cx.stop_propagation();
+        if std::mem::take(&mut self.selecting) {
+            cx.stop_propagation();
+        }
     }
 
     pub(super) fn mouse_move(
