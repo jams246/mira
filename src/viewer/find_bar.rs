@@ -44,7 +44,7 @@ impl Viewer {
                     .accessible_live(!self.find.pending)
                     .text_sm()
                     .text_color(palette.muted)
-                    .child(status),
+                    .when(!self.find.pending && len > 0, |label| label.child(status)),
             )
             .child(controls::button(
                 "find-previous",
