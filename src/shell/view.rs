@@ -42,7 +42,7 @@ impl Shell {
                         palette.background
                     })
                     .border_1()
-                    .border_color(if active { palette.link } else { palette.border })
+                    .border_color(palette.border)
                     .child(
                         controls::button(
                             ("close-tab", id),
