@@ -1,3 +1,5 @@
+mod measured_text;
+
 use std::{ops::Range, rc::Rc};
 
 use gpui::{AnyElement, App, IntoElement, StyledText, TextAlign, Window, div, prelude::*};
@@ -81,15 +83,11 @@ pub(crate) fn build(
                     input.format.kind,
                     resources.palette,
                 );
-                div()
-                    .flex_none()
-                    .max_w_full()
-                    .min_w_0()
-                    .when(input.format.kind == TextKind::Code, |text| {
-                        text.whitespace_nowrap()
-                    })
-                    .child(StyledText::new(prepared.text).with_runs(prepared.runs))
-                    .into_any_element()
+                measured_text::MeasuredText {
+                    text: StyledText::new(prepared.text).with_runs(prepared.runs),
+                    nowrap: input.format.kind == TextKind::Code,
+                }
+                .into_any_element()
             }
             PieceKind::Text => render_inline::text(
                 document,
