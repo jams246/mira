@@ -1,13 +1,16 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use gpui::{AnyElement, App, IntoElement, MouseButton, Window, div, img, prelude::*, px, rgb};
 use mira::document::{Document, Inline};
+use mira::inline_index::InlineIndex;
 
 use crate::{
+    flow_cache::span::MIN_SPAN_BYTES,
     image_cache::{ImageCache, ImageStatus},
     render_context::RenderContext,
     render_text::{self, TextKind},
     selection::Position,
+    wrapped_text::WrappedText,
 };
 
 pub(crate) struct ImageContent<'a> {
@@ -15,6 +18,7 @@ pub(crate) struct ImageContent<'a> {
     pub alt: &'a [Inline],
     pub link: Option<usize>,
     pub occurrence: usize,
+    pub span_source: Option<(Position, Arc<InlineIndex>)>,
 }
 
 pub(crate) fn image(
@@ -41,21 +45,23 @@ pub(crate) fn image(
             return placeholder(
                 document,
                 position,
-                content.alt,
+                content,
                 resources,
                 "Loading image...".into(),
                 id,
+                false,
             );
         }
         ImageStatus::Failed(error) => {
-            return resources.paint.wrap(placeholder(
+            return placeholder(
                 document,
                 position,
-                content.alt,
+                content,
                 resources,
                 format!("Cannot display image: {error}"),
                 id,
-            ));
+                true,
+            );
         }
     };
     let alt_len = content
@@ -114,16 +120,35 @@ pub(crate) fn image(
 fn placeholder(
     document: &Document,
     position: Position,
-    alt: &[Inline],
+    content: ImageContent<'_>,
     resources: &RenderContext,
     message: String,
     id: gpui::SharedString,
+    permanent: bool,
 ) -> AnyElement {
-    div()
-        .id(id)
-        .min_w_0()
-        .max_w_full()
-        .child(render_text::text(
+    let ImageContent {
+        alt, span_source, ..
+    } = content;
+    let len = alt
+        .iter()
+        .map(|run| run.text.as_str(&document.source).len())
+        .sum();
+    let large = len >= MIN_SPAN_BYTES;
+    let text = if large {
+        match span_source {
+            Some((mother, index)) => match alt_range(position, mother, len) {
+                Some(range) => {
+                    WrappedText::new_span(mother, range, TextKind::Body.into(), resources, index)
+                        .into_any_element()
+                }
+                None => div()
+                    .child("Cannot display image alternative text: invalid source range.")
+                    .into_any_element(),
+            },
+            None => WrappedText::new(position, TextKind::Body.into(), resources).into_any_element(),
+        }
+    } else {
+        render_text::text(
             document,
             position,
             alt,
@@ -131,9 +156,38 @@ fn placeholder(
             Rc::clone(&resources.links),
             Rc::clone(&resources.selection),
             resources.owner,
-        ))
-        .child(div().text_sm().text_color(rgb(0x666666)).child(message))
+        )
+    };
+    let text = if !large && len > 0 {
+        resources.paint.wrap(text)
+    } else {
+        text
+    };
+    let caption = div()
+        .text_sm()
+        .text_color(rgb(0x666666))
+        .child(message)
+        .into_any_element();
+    div()
+        .id(id)
+        .min_w_0()
+        .max_w_full()
+        .when(large, |placeholder| placeholder.flex_none())
+        .child(text)
+        .child(if permanent {
+            resources.paint.wrap(caption)
+        } else {
+            caption
+        })
         .into_any_element()
+}
+
+fn alt_range(position: Position, mother: Position, len: usize) -> Option<(usize, usize)> {
+    if position.block != mother.block {
+        return None;
+    }
+    let start = position.byte.checked_sub(mother.byte)?;
+    Some((start, start.checked_add(len)?))
 }
 
 fn dimensions(width: u32, height: u32, available: f32) -> (f32, f32) {
@@ -150,5 +204,31 @@ mod tests {
     fn images_fit_viewport_without_upscaling_or_changing_aspect() {
         assert_eq!(dimensions(1800, 240, 900.), (900., 120.));
         assert_eq!(dimensions(40, 160, 900.), (40., 160.));
+    }
+
+    #[test]
+    fn mixed_alt_range_excludes_table_cell_and_prefix_offsets_once() {
+        let mother = Position { block: 3, byte: 40 };
+        let image = Position { block: 3, byte: 47 };
+        let alt = "東京😀";
+        assert_eq!(alt_range(image, mother, alt.len()), Some((7, 17)));
+    }
+
+    #[test]
+    fn incoherent_alt_source_coordinates_are_rejected() {
+        let mother = Position { block: 3, byte: 40 };
+        assert_eq!(alt_range(Position { block: 2, byte: 47 }, mother, 10), None);
+        assert_eq!(alt_range(Position { block: 3, byte: 39 }, mother, 10), None);
+        assert_eq!(
+            alt_range(
+                Position {
+                    block: 3,
+                    byte: usize::MAX
+                },
+                mother,
+                41
+            ),
+            None
+        );
     }
 }

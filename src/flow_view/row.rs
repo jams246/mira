@@ -86,6 +86,8 @@ pub(crate) fn build(
             ),
             PieceKind::Image { inline } => {
                 let run = &runs[inline];
+                let mut resources = resources.clone();
+                resources.width = input.width;
                 render_image::image(
                     document,
                     position,
@@ -94,8 +96,9 @@ pub(crate) fn build(
                         alt: std::slice::from_ref(run),
                         link: run.link,
                         occurrence: inline,
+                        span_source: Some((input.position, index.inline_index())),
                     },
-                    resources,
+                    &resources,
                     window,
                     cx,
                     !measuring,

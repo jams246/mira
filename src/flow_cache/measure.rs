@@ -79,7 +79,12 @@ pub(super) fn next(
             if span::known(candidate) {
                 if let Some(row) = rows.pop() {
                     debug_assert!(row.pieces.contains(&candidate.piece));
-                    candidate.row = Some(row);
+                    let text = window.text_style();
+                    let font_size = text.font_size.to_pixels(window.rem_size());
+                    let line_height = text
+                        .line_height
+                        .to_pixels(font_size.into(), window.rem_size());
+                    candidate.set_row(row, line_height.into());
                 }
             } else {
                 rows.pop();

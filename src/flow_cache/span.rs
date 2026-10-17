@@ -2,7 +2,11 @@ use gpui::{App, Window};
 use mira::flow_index::{FlowIndex, PieceKind};
 
 use super::{Input, Row};
-use crate::text_cache::{self, IntrinsicWidth, Source, TextCache};
+use crate::{
+    image_cache::ImageStatus,
+    render_text::TextKind,
+    text_cache::{self, IntrinsicWidth, Source, TextCache},
+};
 
 pub(crate) const MIN_SPAN_BYTES: usize = 32 * 1024;
 
@@ -11,11 +15,17 @@ pub(crate) struct Span {
     pub source: Source,
     pub text: text_cache::EntryHandle,
     pub row: Option<Row>,
+    extra_height: f32,
 }
 
 impl Span {
     pub(crate) fn height(&self, line_height: f32) -> f32 {
-        self.text.borrow().estimated_rows() as f32 * line_height
+        self.text.borrow().estimated_rows() as f32 * line_height + self.extra_height
+    }
+
+    pub(super) fn set_row(&mut self, row: Row, line_height: f32) {
+        self.extra_height = (row.height - self.height(line_height)).max(0.);
+        self.row = Some(row);
     }
 
     pub(super) fn demand(
@@ -51,11 +61,27 @@ pub(super) fn find(
     input: &Input<'_>,
     window: &Window,
 ) -> Option<Span> {
+    let document = &input.resources.loaded.document;
+    let runs = Source::whole(input.position.block, input.resources.cell).runs(document);
     for ordinal in range {
         let piece = &index.pieces()[ordinal];
-        if piece.kind != PieceKind::Text || piece.range.len() < MIN_SPAN_BYTES {
+        if piece.range.len() < MIN_SPAN_BYTES {
             continue;
         }
+        let kind = match piece.kind {
+            PieceKind::Text => input.format.kind,
+            PieceKind::Image { inline } => {
+                let target = runs[inline].image?;
+                if matches!(
+                    input.resources.images.borrow().peek(target),
+                    ImageStatus::Ready(_)
+                ) {
+                    continue;
+                }
+                TextKind::Body
+            }
+            PieceKind::Break => continue,
+        };
         let source = Source {
             span: Some((piece.range.start, piece.range.end)),
             ..Source::whole(input.position.block, input.resources.cell)
@@ -67,7 +93,7 @@ pub(super) fn find(
             text_cache::Config {
                 width: input.width,
                 font_size: font_size.into(),
-                kind: input.format.kind,
+                kind,
             },
             Some(index.inline_index()),
         );
@@ -77,6 +103,7 @@ pub(super) fn find(
                 source,
                 text,
                 row: None,
+                extra_height: 0.,
             });
         }
     }

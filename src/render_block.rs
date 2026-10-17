@@ -131,6 +131,7 @@ pub(crate) fn block(
                     alt,
                     link: *link,
                     occurrence: 0,
+                    span_source: None,
                 },
                 &resources,
                 window,
