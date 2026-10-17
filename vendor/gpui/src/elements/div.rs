@@ -642,6 +642,24 @@ pub trait InteractiveElement: Sized {
         self
     }
 
+    /// Marks changing status text as a polite native live region.
+    fn accessible_live(mut self, live: bool) -> Self {
+        self.interactivity()
+            .accessibility
+            .get_or_insert_with(Default::default)
+            .live = live;
+        self
+    }
+
+    /// Sets the one-based position and full size of a logical group, including unmounted items.
+    fn accessible_set_position(mut self, position: usize, size: usize) -> Self {
+        self.interactivity()
+            .accessibility
+            .get_or_insert_with(Default::default)
+            .set_position = Some((position, size));
+        self
+    }
+
     /// Handles native accessibility requests to replace a text field's value.
     fn on_accessibility_value_change(
         mut self,

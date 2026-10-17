@@ -36,7 +36,12 @@ impl Viewer {
                 div()
                     .id("find-status")
                     .accessible_role(gpui::AccessibilityRole::StaticText)
-                    .accessible_name(status.clone())
+                    .accessible_name(if !self.find.pending && len > 0 {
+                        format!("Match {} of {len}", highlights.active.map_or(0, |i| i + 1))
+                    } else {
+                        status.clone()
+                    })
+                    .accessible_live(!self.find.pending)
                     .text_sm()
                     .text_color(palette.muted)
                     .child(status),

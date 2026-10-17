@@ -13,7 +13,7 @@ impl Shell {
             .track_scroll(&self.strip_scroll)
             .border_b_1()
             .border_color(palette.border)
-            .children(self.tabs.iter().map(|tab| {
+            .children(self.tabs.iter().enumerate().map(|(index, tab)| {
                 let id = tab.id;
                 let path = tab.reader.read(cx).loaded_path().unwrap_or(&tab.path);
                 let title = path
@@ -50,6 +50,7 @@ impl Shell {
                         .accessible_name(title)
                         .accessible_role(gpui::AccessibilityRole::Tab)
                         .accessible_selected(self.order.active == Some(id))
+                        .accessible_set_position(index + 1, self.tabs.len())
                         .max_w(px(180.))
                         .overflow_hidden(),
                     )

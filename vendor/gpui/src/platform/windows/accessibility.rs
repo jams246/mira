@@ -21,6 +21,10 @@ use windows::{
 };
 
 pub(crate) const WM_GPUI_ACCESSIBILITY: u32 = WM_USER + 8;
+#[path = "accessibility/events.rs"]
+mod events;
+#[path = "accessibility/nullable.rs"]
+mod nullable;
 
 #[derive(Default)]
 struct Shared {
@@ -45,6 +49,12 @@ impl AccessibilityBridge {
             .ok()
             .and_then(|nodes| nodes.iter().find(|n| n.focused).map(|n| n.id));
         let new_focus = nodes.iter().find(|n| n.focused).map(|n| n.id);
+        let changes = self
+            .0
+            .nodes
+            .read()
+            .map(|before| events::changes(&before, &nodes))
+            .unwrap_or_default();
         let ids: HashSet<_> = nodes.iter().map(|n| n.id).collect();
         if let Ok(mut current) = self.0.nodes.write() {
             *current = nodes;
@@ -52,13 +62,27 @@ impl AccessibilityBridge {
         if let Ok(mut providers) = self.0.providers.lock() {
             providers.retain(|id, _| id.is_none_or(|id| ids.contains(&id)));
         }
-        if old_focus != new_focus
-            && let Some(id) = new_focus
-            && let Ok(provider) = self.provider(hwnd, Some(id))
+        for change in changes {
+            if let Ok(provider) = self.provider(hwnd, Some(change.id())) {
+                crate::measurement::measure("accessibility property event duration", || {
+                    if let Err(error) = change.raise(&provider.simple()) {
+                        log::warn!("Native accessibility event failed: {error}");
+                    }
+                });
+            }
+        }
+        let pane_foreground =
+            old_focus.is_some() && new_focus.is_none() && unsafe { GetForegroundWindow() } == hwnd;
+        if let Some(target) = focus_event_target(old_focus, new_focus, pane_foreground)
+            && let Ok(provider) = self.provider(hwnd, target)
         {
             let provider = provider.simple();
             crate::measurement::measure("accessibility focus event duration", || unsafe {
-                let _ = UiaRaiseAutomationEvent(&provider, UIA_AutomationFocusChangedEventId);
+                if let Err(error) =
+                    UiaRaiseAutomationEvent(&provider, UIA_AutomationFocusChangedEventId)
+                {
+                    log::warn!("Native accessibility focus event failed: {error}");
+                }
             });
         }
     }
@@ -81,9 +105,9 @@ impl AccessibilityBridge {
             .or_insert_with(|| {
                 let provider = Provider::new(hwnd, self, id);
                 if id.is_none() {
-                    CachedProvider::Root(RootProvider(provider).into_object())
+                    CachedProvider::Root(nullable::root(RootProvider(provider)))
                 } else {
-                    CachedProvider::Child(provider.into_object())
+                    CachedProvider::Child(nullable::child(provider))
                 }
             })
             .clone())
@@ -259,6 +283,14 @@ impl Provider {
                 VARIANT::from(!node.metadata.disabled)
             } else if property == UIA_HasKeyboardFocusPropertyId {
                 VARIANT::from(node.focused)
+            } else if property == UIA_LiveSettingPropertyId {
+                VARIANT::from(if node.metadata.live { Polite.0 } else { Off.0 })
+            } else if property == UIA_ToggleToggleStatePropertyId {
+                VARIANT::from(if node.metadata.selected.unwrap_or(false) {
+                    ToggleState_On.0
+                } else {
+                    ToggleState_Off.0
+                })
             } else if property == UIA_IsKeyboardFocusablePropertyId {
                 VARIANT::from(node.focusable && !node.metadata.disabled)
             } else if property == UIA_IsControlElementPropertyId
@@ -276,6 +308,10 @@ impl Provider {
                 VARIANT::from(!node.writable)
             } else if property == UIA_SelectionItemIsSelectedPropertyId {
                 VARIANT::from(node.metadata.selected.unwrap_or(false))
+            } else if property == UIA_PositionInSetPropertyId {
+                VARIANT::from(set_position(&node).0)
+            } else if property == UIA_SizeOfSetPropertyId {
+                VARIANT::from(set_position(&node).1)
             } else {
                 VARIANT::default()
             },
@@ -347,6 +383,22 @@ fn unavailable() -> Error {
 }
 fn absent<T>() -> Result<T> {
     Err(Error::from_hresult(S_FALSE))
+}
+
+fn focus_event_target(
+    before: Option<u64>,
+    after: Option<u64>,
+    foreground: bool,
+) -> Option<Option<u64>> {
+    (before != after && (after.is_some() || foreground)).then_some(after)
+}
+
+fn set_position(node: &AccessibilitySnapshot) -> (i32, i32) {
+    let (position, size) = node.metadata.set_position.unwrap_or_default();
+    (
+        position.min(i32::MAX as usize) as i32,
+        size.min(i32::MAX as usize) as i32,
+    )
 }
 
 #[allow(non_snake_case)]

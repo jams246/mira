@@ -27,6 +27,8 @@ pub(crate) struct Accessibility {
     pub disabled: bool,
     pub selected: Option<bool>,
     pub value: Option<SharedString>,
+    pub live: bool,
+    pub set_position: Option<(usize, usize)>,
 }
 
 /// An immutable native accessibility node from the current frame.

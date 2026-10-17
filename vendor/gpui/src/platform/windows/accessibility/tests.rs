@@ -1,5 +1,26 @@
 use super::*;
 
+#[test]
+fn leaving_a_control_notifies_the_active_document_pane() {
+    assert_eq!(focus_event_target(Some(7), None, true), Some(None));
+}
+
+#[test]
+fn window_deactivation_does_not_publish_pane_focus() {
+    assert_eq!(focus_event_target(Some(7), None, false), None);
+}
+
+#[test]
+fn unchanged_focus_does_not_repeat_an_announcement() {
+    assert_eq!(focus_event_target(Some(7), Some(7), true), None);
+    assert_eq!(focus_event_target(None, None, true), None);
+}
+
+#[test]
+fn moving_to_a_control_keeps_its_existing_focus_event() {
+    assert_eq!(focus_event_target(Some(7), Some(8), true), Some(Some(8)));
+}
+
 fn bridge() -> AccessibilityBridge {
     let bridge = AccessibilityBridge::default();
     bridge.0.nodes.write().unwrap().push(AccessibilitySnapshot {
@@ -10,6 +31,8 @@ fn bridge() -> AccessibilityBridge {
             disabled: false,
             selected: Some(true),
             value: Some("東京".into()),
+            live: false,
+            set_position: None,
         },
         bounds: Default::default(),
         focused: true,
@@ -247,7 +270,7 @@ fn unsupported_pattern_returns_success_without_a_provider() {
     let bridge = bridge();
     for id in [None, Some(7)] {
         let provider = bridge.provider(HWND::default(), id).unwrap().simple();
-        let mut result = std::ptr::null_mut();
+        let mut result = std::ptr::dangling_mut::<std::ffi::c_void>();
         let status = unsafe {
             (provider.vtable().GetPatternProvider)(
                 provider.as_raw(),
@@ -255,9 +278,53 @@ fn unsupported_pattern_returns_success_without_a_provider() {
                 &mut result,
             )
         };
-        assert!(status.is_ok());
+        assert_eq!(status, S_OK);
         assert!(result.is_null());
     }
+}
+
+#[test]
+fn virtual_child_host_provider_clears_a_preexisting_output_pointer() {
+    let bridge = bridge();
+    let provider = bridge.provider(HWND::default(), Some(7)).unwrap().simple();
+    let mut result = std::ptr::dangling_mut::<std::ffi::c_void>();
+    let status =
+        unsafe { (provider.vtable().HostRawElementProvider)(provider.as_raw(), &mut result) };
+    assert_eq!(status, S_OK);
+    assert!(result.is_null());
+}
+
+#[test]
+fn absent_focus_and_navigation_clear_preexisting_output_pointers() {
+    let bridge = bridge();
+    bridge.0.nodes.write().unwrap()[0].focused = false;
+    let root = bridge.provider(HWND::default(), None).unwrap();
+    let focus = root.cast::<IRawElementProviderFragmentRoot>().unwrap();
+    let mut result = std::ptr::dangling_mut::<std::ffi::c_void>();
+    let status = unsafe { (focus.vtable().GetFocus)(focus.as_raw(), &mut result) };
+    assert_eq!(status, S_OK);
+    assert!(result.is_null());
+    let fragment = root.cast::<IRawElementProviderFragment>().unwrap();
+    result = std::ptr::dangling_mut::<std::ffi::c_void>();
+    let status = unsafe {
+        (fragment.vtable().Navigate)(fragment.as_raw(), NavigateDirection_Parent, &mut result)
+    };
+    assert_eq!(status, S_OK);
+    assert!(result.is_null());
+}
+
+#[test]
+fn nullable_interface_callback_rejects_a_null_output_parameter() {
+    let bridge = bridge();
+    let provider = bridge.provider(HWND::default(), Some(7)).unwrap().simple();
+    let status = unsafe {
+        (provider.vtable().GetPatternProvider)(
+            provider.as_raw(),
+            UIA_GridPatternId,
+            std::ptr::null_mut(),
+        )
+    };
+    assert_eq!(status, E_POINTER);
 }
 
 #[test]
@@ -268,6 +335,23 @@ fn root_and_virtual_children_report_the_owning_process() {
         let value = unsafe { provider.GetPropertyValue(UIA_ProcessIdPropertyId) }.unwrap();
         assert_eq!(i32::try_from(&value).unwrap(), std::process::id() as i32);
     }
+}
+
+#[test]
+fn virtual_item_position_uses_full_semantic_set_instead_of_mounted_siblings() {
+    let bridge = bridge();
+    bridge.0.nodes.write().unwrap()[0].metadata.set_position = Some((5, 6));
+    let provider = bridge.provider(HWND::default(), Some(7)).unwrap().simple();
+    for (property, expected) in [
+        (UIA_PositionInSetPropertyId, 5),
+        (UIA_SizeOfSetPropertyId, 6),
+    ] {
+        let value = unsafe { provider.GetPropertyValue(property) }.unwrap();
+        assert_eq!(i32::try_from(&value).unwrap(), expected);
+    }
+    bridge.0.nodes.write().unwrap()[0].metadata.set_position = Some((8_001, 10_000));
+    let value = unsafe { provider.GetPropertyValue(UIA_SizeOfSetPropertyId) }.unwrap();
+    assert_eq!(i32::try_from(&value).unwrap(), 10_000);
 }
 
 #[test]

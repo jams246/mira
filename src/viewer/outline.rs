@@ -65,6 +65,7 @@ impl Viewer {
                                 )
                                 .accessible_role(gpui::AccessibilityRole::ListItem)
                                 .accessible_selected(current == Some(index))
+                                .accessible_set_position(index + 1, this.headings.len())
                                 .w_full()
                                 .justify_start()
                                 .h(px(30.))
