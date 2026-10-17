@@ -117,6 +117,13 @@ impl CodeLayout {
         self.lines.len()
     }
 
+    /// Finds the physical row containing a semantic byte, clamped to the code.
+    pub fn row_for_byte(&self, byte: usize) -> usize {
+        self.lines
+            .partition_point(|line| line.start <= byte.min(self.len))
+            .saturating_sub(1)
+    }
+
     /// Fixed-width extent, with conservative extra width for native Unicode fallback.
     pub fn max_columns(&self) -> usize {
         self.max_columns

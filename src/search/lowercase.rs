@@ -8,6 +8,21 @@ struct Change {
     lowercase: Range<usize>,
 }
 
+pub(super) fn query(text: &str, cancel: &AtomicBool) -> Option<String> {
+    let mut output = String::with_capacity(text.len());
+    let mut check_at = 0;
+    for (byte, ch) in text.char_indices() {
+        if byte >= check_at {
+            if cancel.load(Ordering::Relaxed) {
+                return None;
+            }
+            check_at = byte + 8192;
+        }
+        output.extend(ch.to_lowercase());
+    }
+    Some(output)
+}
+
 pub(super) struct Lowercase {
     text: String,
     changes: Vec<Change>,
@@ -70,5 +85,18 @@ impl Lowercase {
             let change = &self.changes[previous];
             change.source.end + (byte - change.lowercase.end)
         }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn query_normalization_uses_scalar_lowercase_and_honors_cancellation() {
+        let cancelled = AtomicBool::new(true);
+        assert_eq!(query("ÉKİΟΣ", &cancelled), None);
+        cancelled.store(false, Ordering::Relaxed);
+        assert_eq!(query("ÉKİΟΣ", &cancelled).as_deref(), Some("éki\u{307}οσ"));
     }
 }

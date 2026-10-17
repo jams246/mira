@@ -84,3 +84,12 @@ fn code_utf8_floor_uses_semantic_offsets_across_parser_runs() {
         assert_eq!(layout.floor_boundary(&document, runs, byte), expected);
     }
 }
+
+#[test]
+fn byte_rows_include_newlines_empty_final_lines_and_clamped_end() {
+    let (_, layout) = code("```\nfirst\n\n東京\n```\n");
+    assert_eq!(
+        [0, 4, 5, 6, 7, 12, 13, 14, usize::MAX].map(|byte| layout.row_for_byte(byte)),
+        [0, 0, 0, 1, 2, 2, 2, 3, 3]
+    );
+}

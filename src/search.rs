@@ -40,7 +40,10 @@ pub fn search(
     let query = if match_case {
         Cow::Borrowed(query)
     } else {
-        Cow::Owned(query.chars().flat_map(char::to_lowercase).collect())
+        let Some(query) = lowercase::query(query, cancel) else {
+            return Vec::new();
+        };
+        Cow::Owned(query)
     };
     let mut scanner = Scanner {
         document,
@@ -123,6 +126,9 @@ impl Scanner<'_> {
         let Some(text) = Lowercase::new(text, self.match_case, self.cancel) else {
             return;
         };
+        if self.query.len() > text.as_str().len() {
+            return;
+        }
         let mut cursor = 0;
         while let Some(found) = text.as_str()[cursor..].find(self.query) {
             if self.cancel.load(Ordering::Relaxed) {
