@@ -39,27 +39,25 @@ impl TextMap {
     }
 
     pub(crate) fn to_display(&self, source: usize) -> usize {
-        let extra: usize = self
-            .tabs
-            .iter()
-            .take_while(|tab| tab.source < source)
-            .map(|tab| tab.display.len() - 1)
-            .sum();
-        source + extra
+        let end = self.tabs.partition_point(|tab| tab.source < source);
+        source
+            + self.tabs[..end]
+                .last()
+                .map_or(0, |tab| tab.display.end - tab.source - 1)
     }
 
     pub(crate) fn to_source(&self, display: usize) -> usize {
-        let mut extra = 0;
-        for tab in &self.tabs {
-            if display < tab.display.start {
-                break;
-            }
-            if display < tab.display.end {
-                return tab.source;
-            }
-            extra += tab.display.len() - 1;
+        let end = self
+            .tabs
+            .partition_point(|tab| tab.display.start <= display);
+        let Some(tab) = self.tabs[..end].last() else {
+            return display;
+        };
+        if display < tab.display.end {
+            tab.source
+        } else {
+            display - (tab.display.end - tab.source - 1)
         }
-        display - extra
     }
 }
 
@@ -88,5 +86,54 @@ mod tests {
             assert_eq!(mapping.to_source(mapping.to_display(byte)), byte);
             assert!(display.is_char_boundary(mapping.to_display(byte)));
         }
+    }
+
+    #[test]
+    fn exact_tab_starts_ends_and_trailing_expansion_map_to_original_bytes() {
+        let (display, mapping) = TextMap::expand("ab\tc\t");
+        assert_eq!(display, "ab  c   ");
+        assert_eq!(
+            (0..=5)
+                .map(|byte| mapping.to_display(byte))
+                .collect::<Vec<_>>(),
+            [0, 1, 2, 4, 5, 8]
+        );
+        assert_eq!(
+            (0..=8)
+                .map(|byte| mapping.to_source(byte))
+                .collect::<Vec<_>>(),
+            [0, 1, 2, 2, 3, 4, 4, 4, 5]
+        );
+    }
+
+    #[test]
+    fn plain_unicode_and_empty_text_have_identity_mapping() {
+        for source in ["", "é 東京 😀\nplain"] {
+            let (display, mapping) = TextMap::expand(source);
+            assert_eq!(display, source);
+            assert!((0..=source.len()).all(|byte| mapping.to_display(byte) == byte && mapping.to_source(byte) == byte));
+        }
+    }
+
+    #[test]
+    fn many_indented_code_runs_preserve_display_lengths_and_source_endpoints() {
+        let document = mira::markdown::parse("    \tvalue\t日本語\n".repeat(10_000));
+        let mira::document::BlockKind::Code { runs, .. } = &document.blocks[0].kind else {
+            panic!("Expected code");
+        };
+        let plain: String = runs
+            .iter()
+            .map(|run| run.text.as_str(&document.source))
+            .collect();
+        let (display, mapping) = TextMap::expand(&plain);
+        let mut source_byte = 0;
+        let mut display_bytes = 0;
+        for run in runs {
+            let end = source_byte + run.text.as_str(&document.source).len();
+            display_bytes += mapping.to_display(end) - mapping.to_display(source_byte);
+            assert_eq!(mapping.to_source(mapping.to_display(end)), end);
+            source_byte = end;
+        }
+        assert_eq!((runs.len(), display_bytes), (10_000, display.len()));
     }
 }
