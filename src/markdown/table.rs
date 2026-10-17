@@ -31,7 +31,7 @@ impl TableState {
     }
 
     pub(super) fn begin_cell(&mut self) {
-        self.cell = Some(Vec::new());
+        self.cell = Some(Vec::with_capacity(1));
     }
 
     pub(super) fn finish_cell(&mut self) {

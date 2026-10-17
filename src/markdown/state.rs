@@ -78,9 +78,12 @@ impl State {
             cell.push(run);
             return;
         }
-        let (kind, range) = self
-            .leaf
-            .get_or_insert_with(|| (BlockKind::Paragraph(Vec::new()), run.source_range.clone()));
+        let (kind, range) = self.leaf.get_or_insert_with(|| {
+            (
+                BlockKind::Paragraph(Vec::with_capacity(1)),
+                run.source_range.clone(),
+            )
+        });
         range.end = range.end.max(run.source_range.end);
         match kind {
             BlockKind::Paragraph(runs)
