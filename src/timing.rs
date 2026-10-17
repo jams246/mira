@@ -18,6 +18,12 @@ impl Timing {
         self.duration(event, self.start.elapsed());
     }
 
+    pub(crate) fn scale(self, scale: f32) {
+        if self.enabled {
+            eprintln!("MIRA window_scale_factor {scale}");
+        }
+    }
+
     pub(crate) fn duration(self, event: &str, duration: Duration) {
         if self.enabled {
             eprintln!("MIRA {event} {:.3}ms", duration.as_secs_f64() * 1000.);

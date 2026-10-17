@@ -53,6 +53,7 @@ fn main() {
             },
             move |window, cx| {
                 timing.mark("window_created");
+                timing.scale(window.scale_factor());
                 window.on_next_frame(move |_, _| timing.mark("first_frame_callback"));
                 let viewer = cx.new(|cx| Viewer::new(window, cx, timing));
                 if let Some(path) = initial_path {
