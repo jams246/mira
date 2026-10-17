@@ -18,7 +18,7 @@ pub(crate) fn bind_keys(cx: &mut App) {
 
 pub(crate) fn button(
     id: impl Into<ElementId>,
-    label: impl Into<SharedString>,
+    label: impl IntoElement,
     description: impl Into<SharedString>,
     enabled: bool,
     palette: Palette,
@@ -27,7 +27,6 @@ pub(crate) fn button(
     let activate = Rc::new(activate);
     let click = Rc::clone(&activate);
     let description = description.into();
-    let label = label.into();
     div()
         .id(id)
         .accessible_name(description.clone())

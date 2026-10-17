@@ -9,6 +9,8 @@ impl Shell {
             .id("document-tabs")
             .flex()
             .flex_shrink_0()
+            .gap(px(5.))
+            .p(px(5.))
             .overflow_x_scroll()
             .track_scroll(&self.strip_scroll)
             .border_b_1()
@@ -22,21 +24,25 @@ impl Shell {
                     .to_string_lossy()
                     .into_owned();
                 let path: gpui::SharedString = path.to_string_lossy().into_owned().into();
+                let active = self.order.active == Some(id);
                 let shell = cx.weak_entity();
                 div()
                     .id(("tab", id))
                     .flex()
                     .items_center()
                     .flex_shrink_0()
-                    .max_w(px(220.))
-                    .bg(if self.order.active == Some(id) {
+                    .min_w(px(140.))
+                    .h(px(34.))
+                    .px(px(4.))
+                    .gap(px(4.))
+                    .rounded_md()
+                    .bg(if active {
                         palette.panel
                     } else {
                         palette.background
                     })
-                    .border_l(px(5.))
-                    .border_r(px(5.))
-                    .border_color(palette.border)
+                    .border_1()
+                    .border_color(if active { palette.link } else { palette.border })
                     .child(
                         controls::button(
                             ("close-tab", id),
@@ -52,14 +58,20 @@ impl Shell {
                                 }
                             },
                         )
-                        .rounded_none()
-                        .border_color(palette.border)
-                        .bg(palette.border),
+                        .size(px(24.))
+                        .px_0()
+                        .border_color(gpui::transparent_black())
+                        .bg(palette.selection),
                     )
                     .child(
                         controls::button(
                             ("select-tab", id),
-                            title.clone(),
+                            div()
+                                .flex_auto()
+                                .min_w_0()
+                                .text_ellipsis()
+                                .line_clamp(1)
+                                .child(title.clone()),
                             path,
                             true,
                             palette,
@@ -69,12 +81,15 @@ impl Shell {
                         )
                         .accessible_name(title)
                         .accessible_role(gpui::AccessibilityRole::Tab)
-                        .accessible_selected(self.order.active == Some(id))
+                        .accessible_selected(active)
                         .accessible_set_position(index + 1, self.tabs.len())
-                        .rounded_none()
+                        .flex_auto()
+                        .min_w_0()
+                        .h(px(32.))
+                        .px_1()
+                        .justify_start()
                         .border_color(gpui::transparent_black())
-                        .max_w(px(180.))
-                        .overflow_hidden(),
+                        .max_w(px(300.)),
                     )
             }))
     }
