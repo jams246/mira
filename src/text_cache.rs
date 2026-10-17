@@ -1,3 +1,5 @@
+#[cfg(test)]
+pub(crate) mod native_tests;
 mod shape;
 mod source;
 #[cfg(test)]

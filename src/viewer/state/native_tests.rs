@@ -35,6 +35,7 @@ fn hidden_native_reader_preserves_state_and_rejects_stale_async_publications() {
         cx.spawn(async move |cx| {
             let mut work = Box::pin(async {
                 support::realize(window, cx).await;
+                crate::text_cache::native_tests::run(window, cx).await;
                 zoom::run(window, cx).await;
                 input::run(window, cx);
                 navigation::run(window, cx).await;
