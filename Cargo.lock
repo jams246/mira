@@ -2684,6 +2684,7 @@ dependencies = [
 name = "mira"
 version = "0.1.0"
 dependencies = [
+ "embed-resource",
  "gpui",
  "image",
  "pulldown-cmark",
