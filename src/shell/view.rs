@@ -170,6 +170,7 @@ impl Render for Shell {
                 .items_center()
                 .justify_center()
                 .gap_3()
+                .child(crate::branding::logo())
                 .child(div().text_3xl().child("MIRA"))
                 .child("Open a Markdown file to start reading.")
                 .child(controls::button(

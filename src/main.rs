@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod appearance;
+mod branding;
 mod code_cache;
 mod code_glyphs;
 mod code_panel;
