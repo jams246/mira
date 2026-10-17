@@ -1,3 +1,4 @@
+mod accessibility;
 mod clipboard;
 mod destination_list;
 mod direct_write;

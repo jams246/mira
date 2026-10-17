@@ -666,6 +666,7 @@ pub(crate) struct DeferredDraw {
 }
 
 pub(crate) struct Frame {
+    pub(crate) accessibility: Vec<crate::accessibility::PaintedAccessibility>,
     pub(crate) focus: Option<FocusId>,
     pub(crate) window_active: bool,
     pub(crate) element_states: FxHashMap<(GlobalElementId, TypeId), ElementStateBox>,
@@ -700,6 +701,7 @@ pub(crate) struct PrepaintStateIndex {
 
 #[derive(Clone, Default)]
 pub(crate) struct PaintIndex {
+    accessibility_index: usize,
     scene_index: usize,
     mouse_listeners_index: usize,
     input_handlers_index: usize,
@@ -712,6 +714,7 @@ pub(crate) struct PaintIndex {
 impl Frame {
     pub(crate) fn new(dispatch_tree: DispatchTree) -> Self {
         Frame {
+            accessibility: Vec::new(),
             focus: None,
             window_active: false,
             element_states: FxHashMap::default(),
@@ -739,6 +742,7 @@ impl Frame {
     }
 
     pub(crate) fn clear(&mut self) {
+        self.accessibility.clear();
         self.element_states.clear();
         self.accessed_element_states.clear();
         self.mouse_listeners.clear();
@@ -1082,6 +1086,16 @@ impl Window {
                     .log_err();
             }
         }));
+        platform_window.on_accessibility_action(Box::new({
+            let mut cx = cx.to_async();
+            move |id, action| {
+                handle
+                    .update(&mut cx, |_, window, cx| {
+                        window.accessibility_action(id, action, cx)
+                    })
+                    .log_err();
+            }
+        }));
         platform_window.on_appearance_changed(Box::new({
             let mut cx = cx.to_async();
             move || {
@@ -1272,9 +1286,12 @@ impl Window {
     }
 }
 
+/// Propagation and default-handling state after dispatching an input event.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) struct DispatchEventResult {
+pub struct DispatchEventResult {
+    /// Whether the event may continue propagating.
     pub propagate: bool,
+    /// Whether a listener prevented the event's default behavior.
     pub default_prevented: bool,
 }
 
@@ -1944,6 +1961,21 @@ impl Window {
         let previous_window_active = self.rendered_frame.window_active;
         mem::swap(&mut self.rendered_frame, &mut self.next_frame);
         self.next_frame.clear();
+        self.platform_window.update_accessibility(
+            self.rendered_frame
+                .accessibility
+                .iter()
+                .map(|node| {
+                    let mut snapshot = node.snapshot.clone();
+                    snapshot.focused = self.active.get()
+                        && node
+                            .focus
+                            .as_ref()
+                            .is_some_and(|focus| focus.is_focused(self));
+                    snapshot
+                })
+                .collect(),
+        );
         let current_focus_path = self.rendered_frame.focus_path();
         let current_window_active = self.rendered_frame.window_active;
 
@@ -2283,6 +2315,7 @@ impl Window {
 
     pub(crate) fn paint_index(&self) -> PaintIndex {
         PaintIndex {
+            accessibility_index: self.next_frame.accessibility.len(),
             scene_index: self.next_frame.scene.len(),
             mouse_listeners_index: self.next_frame.mouse_listeners.len(),
             input_handlers_index: self.next_frame.input_handlers.len(),
@@ -2294,6 +2327,12 @@ impl Window {
     }
 
     pub(crate) fn reuse_paint(&mut self, range: Range<PaintIndex>) {
+        self.next_frame.accessibility.extend(
+            self.rendered_frame.accessibility
+                [range.start.accessibility_index..range.end.accessibility_index]
+                .iter()
+                .cloned(),
+        );
         self.next_frame.cursor_styles.extend(
             self.rendered_frame.cursor_styles
                 [range.start.cursor_styles_index..range.end.cursor_styles_index]

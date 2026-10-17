@@ -39,6 +39,24 @@ impl WindowsWindowInner {
         lparam: LPARAM,
     ) -> LRESULT {
         let handled = match msg {
+            WM_GETOBJECT => self
+                .state
+                .borrow()
+                .accessibility
+                .object(handle, wparam, lparam),
+            super::accessibility::WM_GPUI_ACCESSIBILITY => {
+                let mut state = self.state.borrow_mut();
+                let requests = state.accessibility.take_requests();
+                let callback = state.callbacks.accessibility.take();
+                drop(state);
+                if let Some(mut callback) = callback {
+                    for (id, action) in requests {
+                        callback(id, action);
+                    }
+                    self.state.borrow_mut().callbacks.accessibility = Some(callback);
+                }
+                Some(0)
+            }
             WM_ACTIVATE => self.handle_activate_msg(wparam),
             WM_CREATE => self.handle_create_msg(handle),
             WM_MOVE => self.handle_move_msg(handle, lparam),

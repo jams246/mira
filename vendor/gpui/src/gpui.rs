@@ -8,6 +8,7 @@ extern crate self as gpui;
 
 #[macro_use]
 mod action;
+mod accessibility;
 mod measurement;
 pub use measurement::set_measurement_sink;
 mod app;
@@ -67,6 +68,7 @@ mod seal {
     pub trait Sealed {}
 }
 
+pub use accessibility::*;
 pub use action::*;
 pub use anyhow::Result;
 pub use app::*;

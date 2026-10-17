@@ -31,6 +31,7 @@ use crate::*;
 pub(crate) struct WindowsWindow(pub Rc<WindowsWindowInner>);
 
 pub struct WindowsWindowState {
+    pub(crate) accessibility: super::accessibility::AccessibilityBridge,
     pub origin: Point<Pixels>,
     pub logical_size: Size<Pixels>,
     pub min_size: Option<Size<Pixels>>,
@@ -120,6 +121,7 @@ impl WindowsWindowState {
         let initial_placement = None;
 
         Ok(Self {
+            accessibility: Default::default(),
             origin,
             logical_size,
             fullscreen_restore_bounds,
@@ -327,6 +329,7 @@ impl WindowsWindowInner {
 
 #[derive(Default)]
 pub(crate) struct Callbacks {
+    pub(crate) accessibility: Option<Box<dyn FnMut(u64, crate::AccessibilityAction)>>,
     pub(crate) request_frame: Option<Box<dyn FnMut(RequestFrameOptions)>>,
     pub(crate) input: Option<Box<dyn FnMut(crate::PlatformInput) -> DispatchEventResult>>,
     pub(crate) active_status_change: Option<Box<dyn FnMut(bool)>>,
@@ -500,6 +503,7 @@ impl rwh::HasDisplayHandle for WindowsWindow {
 
 impl Drop for WindowsWindow {
     fn drop(&mut self) {
+        self.0.state.borrow().accessibility.close();
         // clone this `Rc` to prevent early release of the pointer
         let this = self.0.clone();
         self.0
@@ -516,6 +520,13 @@ impl Drop for WindowsWindow {
 }
 
 impl PlatformWindow for WindowsWindow {
+    fn update_accessibility(&self, nodes: Vec<crate::AccessibilitySnapshot>) {
+        let bridge = self.0.state.borrow().accessibility.clone();
+        bridge.update(self.0.hwnd, nodes);
+    }
+    fn on_accessibility_action(&self, callback: Box<dyn FnMut(u64, crate::AccessibilityAction)>) {
+        self.0.state.borrow_mut().callbacks.accessibility = Some(callback);
+    }
     fn bounds(&self) -> Bounds<Pixels> {
         self.0.state.borrow().bounds()
     }

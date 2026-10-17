@@ -597,6 +597,60 @@ pub trait InteractiveElement: Sized {
     /// Retrieve the interactivity state associated with this element
     fn interactivity(&mut self) -> &mut Interactivity;
 
+    /// Sets the native accessible name independently of displayed text.
+    fn accessible_name(mut self, name: impl Into<SharedString>) -> Self {
+        self.interactivity()
+            .accessibility
+            .get_or_insert_with(Default::default)
+            .name = name.into();
+        self
+    }
+
+    /// Sets the native control role.
+    fn accessible_role(mut self, role: crate::AccessibilityRole) -> Self {
+        self.interactivity()
+            .accessibility
+            .get_or_insert_with(Default::default)
+            .role = role;
+        self
+    }
+
+    /// Exposes the control's disabled state to assistive technology.
+    fn accessible_disabled(mut self, disabled: bool) -> Self {
+        self.interactivity()
+            .accessibility
+            .get_or_insert_with(Default::default)
+            .disabled = disabled;
+        self
+    }
+
+    /// Exposes selection or checked state to assistive technology.
+    fn accessible_selected(mut self, selected: bool) -> Self {
+        self.interactivity()
+            .accessibility
+            .get_or_insert_with(Default::default)
+            .selected = Some(selected);
+        self
+    }
+
+    /// Exposes the current value of an accessible text field.
+    fn accessible_value(mut self, value: impl Into<SharedString>) -> Self {
+        self.interactivity()
+            .accessibility
+            .get_or_insert_with(Default::default)
+            .value = Some(value.into());
+        self
+    }
+
+    /// Handles native accessibility requests to replace a text field's value.
+    fn on_accessibility_value_change(
+        mut self,
+        callback: impl Fn(&str, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.interactivity().accessibility_value_change = Some(Rc::new(callback));
+        self
+    }
+
     /// Assign this element to a group of elements that can be styled together
     fn group(mut self, group: impl Into<SharedString>) -> Self {
         self.interactivity().group = Some(group.into());
@@ -1476,6 +1530,8 @@ impl IntoElement for Div {
 /// interactivity in the `Div` element.
 #[derive(Default)]
 pub struct Interactivity {
+    pub(crate) accessibility: Option<crate::accessibility::Accessibility>,
+    pub(crate) accessibility_value_change: Option<Rc<dyn Fn(&str, &mut Window, &mut App)>>,
     /// The element ID of the element. In id is required to support a stateful subset of the interactivity such as on_click.
     pub element_id: Option<ElementId>,
     /// Whether the element was clicked. This will only be present after layout.
@@ -1816,6 +1872,30 @@ impl Interactivity {
                 }
                 if let Some(focus_handle) = &self.tracked_focus_handle {
                     window.next_frame.tab_stops.insert(focus_handle);
+                }
+                if let Some(metadata) = self.accessibility.clone()
+                    && let Some(global_id) = global_id
+                    && bounds.intersects(&window.content_mask().bounds)
+                {
+                    use std::hash::{Hash, Hasher};
+                    let mut hash = std::collections::hash_map::DefaultHasher::new();
+                    global_id.hash(&mut hash);
+                    window.next_frame.accessibility.push(
+                        crate::accessibility::PaintedAccessibility {
+                            snapshot: crate::AccessibilitySnapshot {
+                                id: hash.finish(),
+                                metadata,
+                                bounds: bounds.intersect(&window.content_mask().bounds),
+                                focused: false,
+                                focusable: self.tracked_focus_handle.is_some(),
+                                invokable: !self.click_listeners.is_empty(),
+                                writable: self.accessibility_value_change.is_some(),
+                            },
+                            focus: self.tracked_focus_handle.clone(),
+                            invoke: self.click_listeners.clone(),
+                            set_value: self.accessibility_value_change.clone(),
+                        },
+                    );
                 }
 
                 window.with_element_opacity(style.opacity, |window| {

@@ -63,6 +63,8 @@ impl Viewer {
                                     palette,
                                     jump,
                                 )
+                                .accessible_role(gpui::AccessibilityRole::ListItem)
+                                .accessible_selected(current == Some(index))
                                 .w_full()
                                 .justify_start()
                                 .h(px(30.))

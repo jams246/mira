@@ -39,7 +39,7 @@ impl Shell {
                     .child(
                         controls::button(
                             ("select-tab", id),
-                            title,
+                            title.clone(),
                             path,
                             true,
                             palette,
@@ -47,6 +47,9 @@ impl Shell {
                                 let _ = shell.update(cx, |shell, cx| shell.select(id, window, cx));
                             },
                         )
+                        .accessible_name(title)
+                        .accessible_role(gpui::AccessibilityRole::Tab)
+                        .accessible_selected(self.order.active == Some(id))
                         .max_w(px(180.))
                         .overflow_hidden(),
                     )

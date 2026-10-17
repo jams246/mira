@@ -82,6 +82,22 @@ impl Render for QueryInput {
         let palette = Palette::for_window(window);
         div()
             .id("find-query")
+            .accessible_name("Find query")
+            .accessible_role(gpui::AccessibilityRole::TextInput)
+            .accessible_value(self.content.clone())
+            .on_accessibility_value_change({
+                let input = cx.weak_entity();
+                move |value, _, cx| {
+                    let _ = input.update(cx, |input, cx| {
+                        let value = coordinates::single_line(value);
+                        input.replace(0..input.content.len(), &value, cx);
+                        input.selected = input.content.len()..input.content.len();
+                        input.reversed = false;
+                        input.marked = None;
+                        cx.notify();
+                    });
+                }
+            })
             .key_context("QueryInput")
             .track_focus(&self.focus)
             .cursor(CursorStyle::IBeam)

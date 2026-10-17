@@ -30,6 +30,8 @@ pub(crate) fn button(
     let label = label.into();
     div()
         .id(id)
+        .accessible_name(description.clone())
+        .accessible_disabled(!enabled)
         .key_context("MiraButton")
         .h(px(28.))
         .px_2()

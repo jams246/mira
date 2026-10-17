@@ -32,7 +32,15 @@ impl Viewer {
             .border_b_1()
             .border_color(palette.border)
             .child(div().flex_1().min_w(px(80.)).child(self.find.input.clone()))
-            .child(div().text_sm().text_color(palette.muted).child(status))
+            .child(
+                div()
+                    .id("find-status")
+                    .accessible_role(gpui::AccessibilityRole::StaticText)
+                    .accessible_name(status.clone())
+                    .text_sm()
+                    .text_color(palette.muted)
+                    .child(status),
+            )
             .child(controls::button(
                 "find-previous",
                 "↑",
@@ -49,14 +57,18 @@ impl Viewer {
                 palette,
                 next,
             ))
-            .child(controls::button(
-                "find-case",
-                if self.find.match_case { "Aa ✓" } else { "Aa" },
-                "Match case",
-                true,
-                palette,
-                case,
-            ))
+            .child(
+                controls::button(
+                    "find-case",
+                    if self.find.match_case { "Aa ✓" } else { "Aa" },
+                    "Match case",
+                    true,
+                    palette,
+                    case,
+                )
+                .accessible_role(gpui::AccessibilityRole::CheckBox)
+                .accessible_selected(self.find.match_case),
+            )
             .child(controls::button(
                 "find-close",
                 "×",

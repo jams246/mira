@@ -107,13 +107,16 @@ impl Shell {
                 loaded && zoom > 50,
                 Viewer::zoom_out,
             ))
-            .child(reader_button(
-                "zoom-reset",
-                format!("{zoom}%"),
-                "Reset zoom (Ctrl+0)",
-                loaded,
-                Viewer::zoom_reset,
-            ))
+            .child(
+                reader_button(
+                    "zoom-reset",
+                    format!("{zoom}%"),
+                    "Reset zoom (Ctrl+0)",
+                    loaded,
+                    Viewer::zoom_reset,
+                )
+                .accessible_name(format!("Reset zoom, {zoom}% (Ctrl+0)")),
+            )
             .child(reader_button(
                 "zoom-in",
                 "+".into(),
