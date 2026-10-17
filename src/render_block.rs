@@ -2,22 +2,21 @@ use gpui::{AnyElement, App, IntoElement, Window, div, prelude::*, px, relative, 
 use mira::document::{BlockKind, ContextKind, Document};
 
 use crate::{
-    render_table::{self, TableScrolls},
-    render_text::{self, LinkHandler, TextKind},
-    selection::{Position, SelectionHandle},
+    render_context::RenderContext,
+    render_image::{self, ImageContent},
+    render_inline, render_table,
+    render_text::TextKind,
+    selection::Position,
 };
 
 pub(crate) fn block(
     document: &Document,
     index: usize,
-    activate_link: LinkHandler,
-    selection: SelectionHandle,
-    table_scrolls: TableScrolls,
+    resources: &RenderContext,
     window: &mut Window,
-    _cx: &mut App,
+    cx: &mut App,
 ) -> AnyElement {
     let block = &document.blocks[index];
-    let owner = window.current_view();
     let position = Position {
         block: index,
         byte: 0,
@@ -33,32 +32,49 @@ pub(crate) fn block(
             break;
         }
     }
+    let width: f32 = window.viewport_size().width.into();
+    let gutter = (width * 0.3 / ancestors.len().max(1) as f32).min(28.);
+    let mut resources = resources.clone();
     let mut content = div().w_full().min_w_0();
-    let mut size = 16.;
+    let size = match &block.kind {
+        BlockKind::Heading { level, .. } => {
+            [32., 27., 23., 20., 18., 16.][usize::from(*level).saturating_sub(1).min(5)]
+        }
+        _ => 16.,
+    };
+    let has_images = match &block.kind {
+        BlockKind::Image { .. } => true,
+        BlockKind::Paragraph(runs) | BlockKind::RawHtml(runs) | BlockKind::Heading { runs, .. } => {
+            runs.iter().any(|run| run.image.is_some())
+        }
+        _ => false,
+    };
+    if has_images {
+        resources.width = (resources.width - image_inset(&ancestors, gutter, size, window)).max(1.);
+    }
     let mut margin = 12.;
     match &block.kind {
         BlockKind::Paragraph(runs) | BlockKind::RawHtml(runs) => {
-            content = content.child(render_text::text(
+            content = content.child(render_inline::content(
                 document,
                 position,
                 runs,
                 TextKind::Body.into(),
-                activate_link,
-                selection,
-                owner,
+                &resources,
+                window,
+                cx,
             ));
         }
-        BlockKind::Heading { level, runs } => {
-            size = [32., 27., 23., 20., 18., 16.][usize::from(*level).saturating_sub(1).min(5)];
+        BlockKind::Heading { runs, .. } => {
             margin = 16.;
-            content = content.pt_3().child(render_text::text(
+            content = content.pt_3().child(render_inline::content(
                 document,
                 position,
                 runs,
                 TextKind::Heading.into(),
-                activate_link,
-                selection,
-                owner,
+                &resources,
+                window,
+                cx,
             ));
         }
         BlockKind::Rule => {
@@ -75,14 +91,14 @@ pub(crate) fn block(
                     .bg(rgb(0xeeeeee))
                     .rounded_md()
                     .text_size(px(14.))
-                    .child(render_text::text(
+                    .child(render_inline::content(
                         document,
                         position,
                         runs,
                         TextKind::Code.into(),
-                        activate_link,
-                        selection,
-                        owner,
+                        &resources,
+                        window,
+                        cx,
                     )),
             );
         }
@@ -90,19 +106,24 @@ pub(crate) fn block(
             if document.blocks.get(index + 1).is_some_and(|next| matches!(next.kind, BlockKind::TableRow { table: next_table, .. } if next_table == *table)) {
                 margin = 0.;
             }
-            content = content.child(render_table::row(
+            content = content.child(render_table::row(document, index, &resources, window, cx));
+        }
+        BlockKind::Image { target, alt, link } => {
+            content = content.child(render_image::image(
                 document,
-                index,
-                table_scrolls,
-                activate_link,
-                selection,
-                owner,
+                position,
+                ImageContent {
+                    target: *target,
+                    alt,
+                    link: *link,
+                    occurrence: 0,
+                },
+                &resources,
+                window,
+                cx,
             ));
         }
-        BlockKind::Image { .. } => content = content.child("[Local image: rendering pending]"),
     }
-    let width: f32 = window.viewport_size().width.into();
-    let gutter = (width * 0.3 / ancestors.len().max(1) as f32).min(28.);
     let mut first_item = true;
     for ancestor in ancestors {
         content = match ancestor {
@@ -116,11 +137,7 @@ pub(crate) fn block(
             ContextKind::ListItem { number, checked } => {
                 let marker = if first_item {
                     first_item = false;
-                    let label = match checked {
-                        Some(true) => "☑".into(),
-                        Some(false) => "☐".into(),
-                        None => number.map_or_else(|| "•".into(), |number| format!("{number}.")),
-                    };
+                    let label = marker_label(*number, *checked);
                     div()
                         .min_w(px(28.))
                         .flex_none()
@@ -148,4 +165,32 @@ pub(crate) fn block(
         .pb(px(margin))
         .child(content)
         .into_any_element()
+}
+
+fn marker_label(number: Option<u64>, checked: Option<bool>) -> String {
+    match checked {
+        Some(true) => "☑".into(),
+        Some(false) => "☐".into(),
+        None => number.map_or_else(|| "•".into(), |number| format!("{number}.")),
+    }
+}
+
+fn image_inset(ancestors: &[&ContextKind], gutter: f32, size: f32, window: &Window) -> f32 {
+    let mut nearest_item = true;
+    ancestors
+        .iter()
+        .map(|ancestor| match ancestor {
+            ContextKind::Quote => gutter.min(16.) + 2.,
+            ContextKind::ListItem { number, checked } if nearest_item => {
+                nearest_item = false;
+                let label = marker_label(*number, *checked);
+                let run = window.text_style().to_run(label.len());
+                let line = window
+                    .text_system()
+                    .shape_line(label.into(), px(size), &[run], None);
+                (f32::from(line.width).ceil() + 8.).max(28.)
+            }
+            ContextKind::ListItem { .. } => gutter,
+        })
+        .sum()
 }

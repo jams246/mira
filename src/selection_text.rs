@@ -18,6 +18,7 @@ pub(crate) struct Interaction {
     pub owner: EntityId,
     pub mapping: TextMap,
     pub align: TextAlign,
+    pub inline: bool,
     pub links: Vec<(Range<usize>, usize)>,
     pub activate_link: LinkHandler,
 }
@@ -34,6 +35,7 @@ pub(crate) fn wrap(
         owner,
         mapping,
         align,
+        inline,
         links,
         activate_link,
     } = interaction;
@@ -55,9 +57,7 @@ pub(crate) fn wrap(
             window.on_mouse_event(move |event: &MouseMoveEvent, phase, _, cx| {
                 if phase != DispatchPhase::Capture
                     || event.pressed_button != Some(MouseButton::Left)
-                    || !capture_selection
-                        .borrow()
-                        .dragging_from(position, capture_mapping.to_source(capture_text.len()))
+                    || !capture_selection.borrow().dragging_from(position)
                 {
                     return;
                 }
@@ -87,7 +87,8 @@ pub(crate) fn wrap(
             "selection-{}-{}",
             position.block, position.byte
         )))
-        .when(!nowrap, |text| text.w_full())
+        .when(!nowrap && !inline, |text| text.w_full())
+        .when(inline, |text| text.flex_none().max_w_full())
         .when(nowrap, |text| text.flex_none().whitespace_nowrap())
         .min_w_0()
         .cursor_text()
@@ -96,11 +97,12 @@ pub(crate) fn wrap(
             let hit = text_hit_test::index(&layout, &text, event.position, align);
             let exact = hit.is_ok();
             let byte = hit.unwrap_or_else(|nearest| nearest);
-            selection.borrow_mut().start(
+            selection.borrow_mut().start_text(
                 Position {
                     block: position.block,
                     byte: position.byte + mapping.to_source(boundary(&text, byte)),
                 },
+                position,
                 exact,
             );
             cx.notify(owner);

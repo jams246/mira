@@ -4,7 +4,12 @@ mod navigation;
 use std::{rc::Rc, sync::Arc};
 
 use crate::{
-    file::LoadedDocument, reader, render_table::TableScrolls, selection::SelectionHandle,
+    file::LoadedDocument,
+    image_cache::{CacheHandle, ImageCache},
+    reader,
+    render_context::RenderContext,
+    render_table::TableScrolls,
+    selection::SelectionHandle,
     timing::Timing,
 };
 use gpui::{
@@ -45,6 +50,7 @@ pub(crate) struct Viewer {
     content_marked: bool,
     selection: SelectionHandle,
     table_scrolls: TableScrolls,
+    images: Option<CacheHandle>,
 }
 
 impl Viewer {
@@ -64,6 +70,7 @@ impl Viewer {
             content_marked: false,
             selection: SelectionHandle::default(),
             table_scrolls: TableScrolls::default(),
+            images: None,
         }
     }
 
@@ -142,6 +149,10 @@ impl Render for Viewer {
             .text_color(rgb(0x242424))
             .font_family("Segoe UI");
         if let Some(loaded) = &self.loaded {
+            let images = self
+                .images
+                .get_or_insert_with(|| ImageCache::new(Arc::clone(loaded), window.current_view()));
+            images.borrow_mut().begin_frame();
             if !self.content_marked {
                 self.content_marked = true;
                 let timing = self.timing;
@@ -158,9 +169,14 @@ impl Render for Viewer {
                 .child(reader::viewport(
                     Arc::clone(loaded),
                     self.list.clone(),
-                    activate_link,
-                    Rc::clone(&self.selection),
-                    Rc::clone(&self.table_scrolls),
+                    RenderContext {
+                        links: activate_link,
+                        selection: Rc::clone(&self.selection),
+                        tables: Rc::clone(&self.table_scrolls),
+                        images: Rc::clone(images),
+                        owner: window.current_view(),
+                        width: (f32::from(window.viewport_size().width) - 64.).max(1.),
+                    },
                 ));
         }
         root.justify_center()

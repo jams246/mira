@@ -16,6 +16,7 @@ pub(crate) struct Selection {
     focus: Option<Position>,
     dragging: bool,
     link_hit: bool,
+    drag_origin: Option<Position>,
 }
 
 impl Selection {
@@ -24,6 +25,12 @@ impl Selection {
         self.focus = Some(position);
         self.dragging = true;
         self.link_hit = link_hit;
+        self.drag_origin = Some(position);
+    }
+
+    pub(crate) fn start_text(&mut self, position: Position, origin: Position, link_hit: bool) {
+        self.start(position, link_hit);
+        self.drag_origin = Some(origin);
     }
 
     pub(crate) fn extend(&mut self, position: Position) -> bool {
@@ -38,12 +45,8 @@ impl Selection {
         self.dragging = false;
     }
 
-    pub(crate) fn dragging_from(&self, position: Position, len: usize) -> bool {
-        self.dragging
-            && self.anchor.is_some_and(|anchor| {
-                anchor.block == position.block
-                    && (position.byte..=position.byte + len).contains(&anchor.byte)
-            })
+    pub(crate) fn dragging_from(&self, position: Position) -> bool {
+        self.dragging && self.drag_origin == Some(position)
     }
 
     fn bounds(&self) -> Option<(Position, Position)> {
@@ -196,5 +199,14 @@ mod tests {
         );
         assert_eq!(selection.range_at(Position { block: 2, byte: 0 }, 4), None);
         assert_eq!(selection.range_at(Position { block: 2, byte: 16 }, 4), None);
+    }
+
+    #[test]
+    fn adjacent_text_fragments_capture_only_the_originating_fragment() {
+        let mut selection = Selection::default();
+        let origin = Position { block: 1, byte: 10 };
+        selection.start_text(Position { byte: 12, ..origin }, origin, true);
+        assert!(selection.dragging_from(origin));
+        assert!(!selection.dragging_from(Position { byte: 0, ..origin }));
     }
 }

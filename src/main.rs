@@ -1,8 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod file;
+mod image_cache;
+mod inline_flow;
 mod reader;
 mod render_block;
+mod render_context;
+mod render_image;
+mod render_inline;
 mod render_table;
 mod render_text;
 mod selection;

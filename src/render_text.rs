@@ -21,9 +21,11 @@ pub(crate) enum TextKind {
     Code,
 }
 
+#[derive(Clone, Copy)]
 pub(crate) struct TextFormat {
     pub kind: TextKind,
     pub align: TextAlign,
+    pub inline: bool,
 }
 
 impl From<TextKind> for TextFormat {
@@ -31,6 +33,7 @@ impl From<TextKind> for TextFormat {
         Self {
             kind,
             align: TextAlign::Left,
+            inline: false,
         }
     }
 }
@@ -69,6 +72,7 @@ pub(crate) fn text(
             owner,
             mapping,
             align: format.align,
+            inline: format.inline,
             links: links.into_iter().zip(destinations).collect(),
             activate_link,
         },

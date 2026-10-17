@@ -10,6 +10,9 @@ impl Viewer {
         self.generation = self.generation.wrapping_add(1);
         let generation = self.generation;
         self.loaded = None;
+        if let Some(images) = self.images.take() {
+            images.borrow_mut().clear(window, cx);
+        }
         self.link_error = None;
         self.pending_anchor = None;
         self.content_marked = false;

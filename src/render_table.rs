@@ -1,12 +1,16 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use gpui::{AnyElement, EntityId, IntoElement, ScrollHandle, TextAlign, div, prelude::*, px, rgb};
+use gpui::{
+    AnyElement, App, IntoElement, ScrollHandle, TextAlign, Window, div, prelude::*, px, rgb,
+};
 use mira::document::{BlockKind, Document};
 use pulldown_cmark::Alignment;
 
 use crate::{
-    render_text::{self, LinkHandler, TextFormat, TextKind},
-    selection::{Position, SelectionHandle},
+    render_context::RenderContext,
+    render_inline,
+    render_text::{TextFormat, TextKind},
+    selection::Position,
 };
 
 pub(crate) type TableScrolls = Rc<RefCell<HashMap<usize, ScrollHandle>>>;
@@ -14,10 +18,9 @@ pub(crate) type TableScrolls = Rc<RefCell<HashMap<usize, ScrollHandle>>>;
 pub(crate) fn row(
     document: &Document,
     index: usize,
-    scrolls: TableScrolls,
-    activate_link: LinkHandler,
-    selection: SelectionHandle,
-    owner: EntityId,
+    resources: &RenderContext,
+    window: &mut Window,
+    cx: &mut App,
 ) -> AnyElement {
     let BlockKind::TableRow {
         table,
@@ -27,7 +30,14 @@ pub(crate) fn row(
     else {
         return div().into_any_element();
     };
-    let scroll = scrolls.borrow_mut().entry(*table).or_default().clone();
+    let scroll = resources
+        .tables
+        .borrow_mut()
+        .entry(*table)
+        .or_default()
+        .clone();
+    let mut resources = resources.clone();
+    resources.width = 223.;
     let mut contents = div().flex().flex_none();
     let mut offset = 0;
     for (column, runs) in cells.iter().enumerate() {
@@ -41,7 +51,7 @@ pub(crate) fn row(
             Alignment::Right => TextAlign::Right,
             _ => TextAlign::Left,
         };
-        let text = render_text::text(
+        let text = render_inline::content(
             document,
             Position {
                 block: index,
@@ -55,10 +65,11 @@ pub(crate) fn row(
                     TextKind::Body
                 },
                 align,
+                inline: false,
             },
-            Rc::clone(&activate_link),
-            Rc::clone(&selection),
-            owner,
+            &resources,
+            window,
+            cx,
         );
         offset += runs
             .iter()
