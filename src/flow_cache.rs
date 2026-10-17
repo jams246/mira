@@ -1,4 +1,6 @@
 pub(crate) mod measure;
+#[cfg(test)]
+pub(crate) mod native_tests;
 pub(crate) mod span;
 #[cfg(test)]
 mod tests;
