@@ -15,6 +15,7 @@ impl Viewer {
         }
         self.link_error = None;
         self.pending_anchor = None;
+        self.follow_bottom = false;
         self.content_marked = false;
         self.selection = Default::default();
         self.table_scrolls = Default::default();

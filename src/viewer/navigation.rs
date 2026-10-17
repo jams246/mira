@@ -20,6 +20,7 @@ impl Viewer {
     }
 
     pub(super) fn top(&mut self, _: &Top, _: &mut Window, cx: &mut Context<Self>) {
+        self.follow_bottom = false;
         self.list.scroll_to(ListOffset {
             item_ix: 0,
             offset_in_item: px(0.),
@@ -28,6 +29,7 @@ impl Viewer {
     }
 
     pub(super) fn bottom(&mut self, _: &Bottom, _: &mut Window, cx: &mut Context<Self>) {
+        self.follow_bottom = true;
         self.list.scroll_to(ListOffset {
             item_ix: self.list.item_count(),
             offset_in_item: px(0.),
@@ -36,6 +38,7 @@ impl Viewer {
     }
 
     pub(super) fn page_up(&mut self, _: &PageUp, _: &mut Window, cx: &mut Context<Self>) {
+        self.follow_bottom = false;
         let top = self.list.logical_scroll_top();
         let viewport = self.list.viewport_bounds();
         let visible = (top.item_ix..self.list.item_count())
@@ -51,6 +54,7 @@ impl Viewer {
     }
 
     pub(super) fn page_down(&mut self, _: &PageDown, _: &mut Window, cx: &mut Context<Self>) {
+        self.follow_bottom = false;
         let top = self.list.logical_scroll_top();
         let viewport = self.list.viewport_bounds();
         let target = viewport.top() + viewport.size.height * 0.9;

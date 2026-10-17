@@ -45,6 +45,7 @@ pub(crate) struct Viewer {
     focus: FocusHandle,
     timing: Timing,
     list: ListState,
+    follow_bottom: bool,
     pending_anchor: Option<String>,
     link_error: Option<String>,
     content_marked: bool,
@@ -57,6 +58,8 @@ impl Viewer {
     pub(crate) fn new(window: &mut Window, cx: &mut Context<Self>, timing: Timing) -> Self {
         let focus = cx.focus_handle();
         window.focus(&focus);
+        let list = ListState::new(0, ListAlignment::Top, px(500.));
+        list.set_scroll_handler(cx.listener(|viewer, _, _, _| viewer.follow_bottom = false));
         Self {
             loaded: None,
             message: "Open a Markdown file to start reading.".into(),
@@ -64,7 +67,8 @@ impl Viewer {
             load_task: None,
             focus,
             timing,
-            list: ListState::new(0, ListAlignment::Top, px(500.)),
+            list,
+            follow_bottom: false,
             pending_anchor: None,
             link_error: None,
             content_marked: false,
@@ -95,6 +99,7 @@ impl Viewer {
     }
 
     fn jump_to_anchor(&mut self, anchor: &str) {
+        self.follow_bottom = false;
         let Some(loaded) = &self.loaded else {
             return;
         };
@@ -124,6 +129,12 @@ impl Viewer {
 
 impl Render for Viewer {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.follow_bottom {
+            self.list.scroll_to(ListOffset {
+                item_ix: self.list.item_count(),
+                offset_in_item: px(0.),
+            });
+        }
         let root = div()
             .relative()
             .key_context("Mira")
