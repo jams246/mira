@@ -1,12 +1,16 @@
 use std::{ops::Range, rc::Rc};
 
 use gpui::{
-    AnyElement, App, EntityId, FontStyle, FontWeight, InteractiveText, IntoElement, SharedString,
-    StrikethroughStyle, StyledText, TextRun, UnderlineStyle, Window, font, px, rgb,
+    AnyElement, App, EntityId, FontStyle, FontWeight, SharedString, StrikethroughStyle, TextAlign,
+    TextRun, UnderlineStyle, Window, font, px, rgb,
 };
 use mira::document::{Document, Inline};
 
-use crate::{selection::SelectionHandle, selection_text, text_map::TextMap};
+use crate::{
+    selection::{Position, SelectionHandle},
+    selection_text, text_background,
+    text_map::TextMap,
+};
 
 pub(crate) type LinkHandler = Rc<dyn Fn(usize, &mut Window, &mut App)>;
 
@@ -17,11 +21,25 @@ pub(crate) enum TextKind {
     Code,
 }
 
+pub(crate) struct TextFormat {
+    pub kind: TextKind,
+    pub align: TextAlign,
+}
+
+impl From<TextKind> for TextFormat {
+    fn from(kind: TextKind) -> Self {
+        Self {
+            kind,
+            align: TextAlign::Left,
+        }
+    }
+}
+
 pub(crate) fn text(
     document: &Document,
-    index: usize,
+    position: Position,
     inlines: &[Inline],
-    kind: TextKind,
+    format: TextFormat,
     activate_link: LinkHandler,
     selection: SelectionHandle,
     owner: EntityId,
@@ -33,24 +51,28 @@ pub(crate) fn text(
         destinations,
         mapping,
         source_len,
-    } = prepare(document, inlines, kind);
+    } = prepare(document, inlines, format.kind);
     let selected = selection
         .borrow()
-        .range_for(index, source_len)
+        .range_at(position, source_len)
         .map(|range| mapping.to_display(range.start)..mapping.to_display(range.end));
     let runs = selection_text::highlight(runs, selected);
     let text: SharedString = text.into();
-    let styled = StyledText::new(text.clone()).with_runs(runs);
-    let layout = styled.layout().clone();
-    let link_selection = Rc::clone(&selection);
-    let element = InteractiveText::new(("markdown-text", index), styled)
-        .on_click(links, move |link, window, cx| {
-            if link_selection.borrow().is_empty() {
-                activate_link(destinations[link], window, cx);
-            }
-        })
-        .into_any_element();
-    selection_text::wrap(index, text, layout, element, selection, owner, mapping)
+    let (styled, layout) = text_background::text(text.clone(), runs, format.align);
+    selection_text::wrap(
+        text,
+        layout,
+        styled,
+        selection_text::Interaction {
+            position,
+            selection,
+            owner,
+            mapping,
+            align: format.align,
+            links: links.into_iter().zip(destinations).collect(),
+            activate_link,
+        },
+    )
 }
 
 struct PreparedText {

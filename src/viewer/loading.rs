@@ -14,6 +14,7 @@ impl Viewer {
         self.pending_anchor = None;
         self.content_marked = false;
         self.selection = Default::default();
+        self.table_scrolls = Default::default();
         self.message = format!("Opening {}...", path.display());
         window.set_window_title("MIRA");
         cx.notify();

@@ -3,7 +3,10 @@ mod navigation;
 
 use std::{rc::Rc, sync::Arc};
 
-use crate::{file::LoadedDocument, reader, selection::SelectionHandle, timing::Timing};
+use crate::{
+    file::LoadedDocument, reader, render_table::TableScrolls, selection::SelectionHandle,
+    timing::Timing,
+};
 use gpui::{
     App, Context, FocusHandle, KeyBinding, ListAlignment, ListOffset, ListState, MouseButton, Task,
     Window, actions, div, prelude::*, px, rgb,
@@ -41,6 +44,7 @@ pub(crate) struct Viewer {
     link_error: Option<String>,
     content_marked: bool,
     selection: SelectionHandle,
+    table_scrolls: TableScrolls,
 }
 
 impl Viewer {
@@ -59,6 +63,7 @@ impl Viewer {
             link_error: None,
             content_marked: false,
             selection: SelectionHandle::default(),
+            table_scrolls: TableScrolls::default(),
         }
     }
 
@@ -155,6 +160,7 @@ impl Render for Viewer {
                     self.list.clone(),
                     activate_link,
                     Rc::clone(&self.selection),
+                    Rc::clone(&self.table_scrolls),
                 ));
         }
         root.justify_center()

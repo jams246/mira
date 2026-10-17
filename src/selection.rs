@@ -15,13 +15,15 @@ pub(crate) struct Selection {
     anchor: Option<Position>,
     focus: Option<Position>,
     dragging: bool,
+    link_hit: bool,
 }
 
 impl Selection {
-    pub(crate) fn start(&mut self, position: Position) {
+    pub(crate) fn start(&mut self, position: Position, link_hit: bool) {
         self.anchor = Some(position);
         self.focus = Some(position);
         self.dragging = true;
+        self.link_hit = link_hit;
     }
 
     pub(crate) fn extend(&mut self, position: Position) -> bool {
@@ -36,6 +38,14 @@ impl Selection {
         self.dragging = false;
     }
 
+    pub(crate) fn dragging_from(&self, position: Position, len: usize) -> bool {
+        self.dragging
+            && self.anchor.is_some_and(|anchor| {
+                anchor.block == position.block
+                    && (position.byte..=position.byte + len).contains(&anchor.byte)
+            })
+    }
+
     fn bounds(&self) -> Option<(Position, Position)> {
         let anchor = self.anchor?;
         let focus = self.focus?;
@@ -44,6 +54,10 @@ impl Selection {
 
     pub(crate) fn is_empty(&self) -> bool {
         self.bounds().is_none()
+    }
+
+    pub(crate) fn link_anchor(&self) -> Option<Position> {
+        self.anchor.filter(|_| self.link_hit && self.is_empty())
     }
 
     pub(crate) fn range_for(&self, block: usize, len: usize) -> Option<Range<usize>> {
@@ -62,6 +76,12 @@ impl Selection {
             len
         };
         (first < last).then_some(first..last)
+    }
+
+    pub(crate) fn range_at(&self, position: Position, len: usize) -> Option<Range<usize>> {
+        let range = self.range_for(position.block, position.byte + len)?;
+        let first = range.start.max(position.byte);
+        (first < range.end).then(|| first - position.byte..range.end - position.byte)
     }
 
     pub(crate) fn select_all(&mut self, document: &Document) {
@@ -137,7 +157,7 @@ mod tests {
     fn backwards_selection_copies_unmounted_blocks_and_unicode() {
         let document = markdown::parse("Alpha 東京\n\nMiddle **bold**\n\nOmega".into());
         let mut selection = Selection::default();
-        selection.start(Position { block: 2, byte: 3 });
+        selection.start(Position { block: 2, byte: 3 }, true);
         selection.extend(Position { block: 0, byte: 6 });
         assert_eq!(selection.text(&document), "東京\n\nMiddle bold\n\nOme");
         assert_eq!(selection.range_for(1, 11), Some(0..11));
@@ -154,10 +174,27 @@ mod tests {
     #[test]
     fn selection_stops_after_mouse_up_and_boundaries_remain_valid() {
         let mut selection = Selection::default();
-        selection.start(Position { block: 0, byte: 0 });
+        selection.start(Position { block: 0, byte: 0 }, true);
         selection.finish();
         assert!(!selection.extend(Position { block: 1, byte: 3 }));
         assert!(selection.is_empty());
         assert_eq!(boundary("a😀b", 3), 1);
+    }
+
+    #[test]
+    fn cell_selection_offsets_intersect_without_repeating_prefixes() {
+        let mut selection = Selection::default();
+        selection.start(Position { block: 2, byte: 6 }, true);
+        selection.extend(Position { block: 2, byte: 14 });
+        assert_eq!(
+            selection.range_at(Position { block: 2, byte: 4 }, 5),
+            Some(2..5)
+        );
+        assert_eq!(
+            selection.range_at(Position { block: 2, byte: 10 }, 4),
+            Some(0..4)
+        );
+        assert_eq!(selection.range_at(Position { block: 2, byte: 0 }, 4), None);
+        assert_eq!(selection.range_at(Position { block: 2, byte: 16 }, 4), None);
     }
 }

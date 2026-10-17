@@ -2,8 +2,9 @@ use gpui::{AnyElement, App, IntoElement, Window, div, prelude::*, px, relative, 
 use mira::document::{BlockKind, ContextKind, Document};
 
 use crate::{
+    render_table::{self, TableScrolls},
     render_text::{self, LinkHandler, TextKind},
-    selection::SelectionHandle,
+    selection::{Position, SelectionHandle},
 };
 
 pub(crate) fn block(
@@ -11,11 +12,16 @@ pub(crate) fn block(
     index: usize,
     activate_link: LinkHandler,
     selection: SelectionHandle,
+    table_scrolls: TableScrolls,
     window: &mut Window,
     _cx: &mut App,
 ) -> AnyElement {
     let block = &document.blocks[index];
     let owner = window.current_view();
+    let position = Position {
+        block: index,
+        byte: 0,
+    };
     let mut context = block.context;
     let mut ancestors = Vec::new();
     while let Some(index) = context {
@@ -34,9 +40,9 @@ pub(crate) fn block(
         BlockKind::Paragraph(runs) | BlockKind::RawHtml(runs) => {
             content = content.child(render_text::text(
                 document,
-                index,
+                position,
                 runs,
-                TextKind::Body,
+                TextKind::Body.into(),
                 activate_link,
                 selection,
                 owner,
@@ -47,9 +53,9 @@ pub(crate) fn block(
             margin = 16.;
             content = content.pt_3().child(render_text::text(
                 document,
-                index,
+                position,
                 runs,
-                TextKind::Heading,
+                TextKind::Heading.into(),
                 activate_link,
                 selection,
                 owner,
@@ -71,16 +77,28 @@ pub(crate) fn block(
                     .text_size(px(14.))
                     .child(render_text::text(
                         document,
-                        index,
+                        position,
                         runs,
-                        TextKind::Code,
+                        TextKind::Code.into(),
                         activate_link,
                         selection,
                         owner,
                     )),
             );
         }
-        BlockKind::TableRow { .. } => content = content.child("[Table row: rendering pending]"),
+        BlockKind::TableRow { table, .. } => {
+            if document.blocks.get(index + 1).is_some_and(|next| matches!(next.kind, BlockKind::TableRow { table: next_table, .. } if next_table == *table)) {
+                margin = 0.;
+            }
+            content = content.child(render_table::row(
+                document,
+                index,
+                table_scrolls,
+                activate_link,
+                selection,
+                owner,
+            ));
+        }
         BlockKind::Image { .. } => content = content.child("[Local image: rendering pending]"),
     }
     let width: f32 = window.viewport_size().width.into();

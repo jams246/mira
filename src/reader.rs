@@ -3,7 +3,8 @@ use std::{rc::Rc, sync::Arc};
 use gpui::{App, IntoElement, ListState, Window, div, list, prelude::*};
 
 use crate::{
-    file::LoadedDocument, render_block, render_text::LinkHandler, selection::SelectionHandle,
+    file::LoadedDocument, render_block, render_table::TableScrolls, render_text::LinkHandler,
+    selection::SelectionHandle,
 };
 
 pub(crate) fn viewport(
@@ -11,6 +12,7 @@ pub(crate) fn viewport(
     state: ListState,
     activate_link: LinkHandler,
     selection: SelectionHandle,
+    table_scrolls: TableScrolls,
 ) -> impl IntoElement {
     let list = list(state, move |index, window: &mut Window, cx: &mut App| {
         render_block::block(
@@ -18,6 +20,7 @@ pub(crate) fn viewport(
             index,
             Rc::clone(&activate_link),
             Rc::clone(&selection),
+            Rc::clone(&table_scrolls),
             window,
             cx,
         )
