@@ -170,6 +170,11 @@ impl CodeLayout {
     pub fn slice(&self, document: &Document, runs: &[Inline], range: Range<usize>) -> Vec<Inline> {
         self.runs.slice(document, runs, range)
     }
+
+    /// Clamps a semantic code byte to the preceding UTF-8 character boundary.
+    pub fn floor_boundary(&self, document: &Document, runs: &[Inline], byte: usize) -> usize {
+        self.runs.floor_boundary(document, runs, byte)
+    }
 }
 
 #[cfg(test)]

@@ -14,12 +14,16 @@ pub(crate) struct TextMap {
 
 impl TextMap {
     pub(crate) fn expand(source: &str) -> (String, Self) {
+        Self::expand_from(source, 0)
+    }
+
+    pub(crate) fn expand_from(source: &str, initial_column: usize) -> (String, Self) {
         let mut text = String::with_capacity(source.len());
         let mut mapping = Self {
             preformatted: true,
             tabs: Vec::new(),
         };
-        let mut column = 0;
+        let mut column = initial_column;
         for (byte, character) in source.char_indices() {
             if character == '\t' {
                 let spaces = 4 - column % 4;
@@ -135,5 +139,24 @@ mod tests {
             source_byte = end;
         }
         assert_eq!((runs.len(), display_bytes), (10_000, display.len()));
+    }
+
+    #[test]
+    fn visible_code_slices_preserve_original_tab_phase_and_newline_reset() {
+        let source = "東京\té\t😀\n\tx";
+        for column in 0..8 {
+            let (display, mapping) = TextMap::expand_from(source, column);
+            let prefix = "a".repeat(column);
+            let (reference, _) = TextMap::expand(&format!("{prefix}{source}"));
+            assert_eq!(display, reference[column..]);
+            for byte in source
+                .char_indices()
+                .map(|(byte, _)| byte)
+                .chain([source.len()])
+            {
+                assert_eq!(mapping.to_source(mapping.to_display(byte)), byte);
+                assert!(display.is_char_boundary(mapping.to_display(byte)));
+            }
+        }
     }
 }

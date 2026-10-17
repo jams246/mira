@@ -65,3 +65,22 @@ fn ordinary_code_avoids_indexes_and_large_code_keeps_semantic_block_identity() {
     assert_eq!(indexes.len(), 1);
     assert!(indexes.contains_key(&1));
 }
+
+#[test]
+fn code_utf8_floor_uses_semantic_offsets_across_parser_runs() {
+    let (document, layout) = code("    é\n    東京😀\n");
+    let BlockKind::Code { runs, .. } = &document.blocks[0].kind else {
+        panic!("code");
+    };
+    let text = runs
+        .iter()
+        .map(|run| run.text.as_str(&document.source))
+        .collect::<String>();
+    for byte in 0..text.len() + 3 {
+        let mut expected = byte.min(text.len());
+        while !text.is_char_boundary(expected) {
+            expected -= 1;
+        }
+        assert_eq!(layout.floor_boundary(&document, runs, byte), expected);
+    }
+}
