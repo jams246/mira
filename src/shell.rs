@@ -41,6 +41,7 @@ struct Tab {
 struct OpenRequest {
     path: PathBuf,
     anchor: Option<String>,
+    prepared: Option<Task<std::io::Result<crate::file::LoadedDocument>>>,
 }
 
 pub(crate) struct Shell {

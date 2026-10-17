@@ -8,25 +8,27 @@ pub(crate) struct Timing {
 
 impl Timing {
     pub(crate) fn start() -> Self {
+        let start = Instant::now();
+        crate::diagnostics::initialize();
         Self {
-            start: Instant::now(),
+            start,
             enabled: std::env::var_os("MIRA_TIMINGS").is_some(),
         }
     }
 
-    pub(crate) fn mark(self, event: &str) {
+    pub(crate) fn mark(self, event: &'static str) {
         self.duration(event, self.start.elapsed());
     }
 
     pub(crate) fn scale(self, scale: f32) {
         if self.enabled {
-            eprintln!("MIRA window_scale_factor {scale}");
+            crate::diagnostics::scale(scale);
         }
     }
 
-    pub(crate) fn duration(self, event: &str, duration: Duration) {
+    pub(crate) fn duration(self, event: &'static str, duration: Duration) {
         if self.enabled {
-            eprintln!("MIRA {event} {:.3}ms", duration.as_secs_f64() * 1000.);
+            crate::diagnostics::duration(event, duration);
         }
     }
 }

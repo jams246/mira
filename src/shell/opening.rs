@@ -1,6 +1,6 @@
 use std::{path::PathBuf, rc::Rc};
 
-use gpui::{AppContext, Context, PathPromptOptions, Window};
+use gpui::{AppContext, Context, PathPromptOptions, Task, Window};
 
 use super::{OpenRequest, Shell, Tab};
 use crate::viewer::{Open, Viewer};
@@ -15,7 +15,33 @@ impl Shell {
         self.enqueue(
             paths
                 .into_iter()
-                .map(|path| OpenRequest { path, anchor: None })
+                .map(|path| OpenRequest {
+                    path,
+                    anchor: None,
+                    prepared: None,
+                })
+                .collect(),
+            window,
+            cx,
+        );
+    }
+
+    pub(crate) fn open_initial_paths(
+        &mut self,
+        paths: Vec<PathBuf>,
+        prepared: Task<std::io::Result<crate::file::LoadedDocument>>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let mut prepared = Some(prepared);
+        self.enqueue(
+            paths
+                .into_iter()
+                .map(|path| OpenRequest {
+                    path,
+                    anchor: None,
+                    prepared: prepared.take(),
+                })
                 .collect(),
             window,
             cx,
@@ -93,10 +119,22 @@ impl Shell {
         reader.update(cx, |reader, cx| {
             reader.set_open_handler(Rc::new(move |path, anchor, window, cx| {
                 let _ = shell.update(cx, |shell, cx| {
-                    shell.enqueue(vec![OpenRequest { path, anchor }], window, cx);
+                    shell.enqueue(
+                        vec![OpenRequest {
+                            path,
+                            anchor,
+                            prepared: None,
+                        }],
+                        window,
+                        cx,
+                    );
                 });
             }));
-            reader.load_with_anchor(request.path.clone(), request.anchor, window, cx);
+            if let Some(prepared) = request.prepared {
+                reader.load_with_task(request.path, request.anchor, prepared, window, cx);
+            } else {
+                reader.load_with_anchor(request.path, request.anchor, window, cx);
+            }
             reader.deactivate(window, cx);
         });
         let observation = cx.observe_in(&reader, window, move |shell, reader, window, cx| {

@@ -13,6 +13,21 @@ impl Viewer {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        let source = path.clone();
+        let task = cx
+            .background_executor()
+            .spawn(async move { crate::file::load(&source) });
+        self.load_with_task(path, anchor, task, window, cx);
+    }
+
+    pub(crate) fn load_with_task(
+        &mut self,
+        path: PathBuf,
+        anchor: Option<String>,
+        task: Task<std::io::Result<LoadedDocument>>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.generation = self.generation.wrapping_add(1);
         let generation = self.generation;
         self.loading = true;
@@ -25,7 +40,7 @@ impl Viewer {
         let old_headings = Arc::clone(&self.headings);
         let location = self.location();
         let task = cx.background_executor().spawn(async move {
-            crate::file::load(&path).map(|loaded| {
+            task.await.map(|loaded| {
                 let headings = headings::index(&loaded.document);
                 let unchanged = previous
                     .as_ref()

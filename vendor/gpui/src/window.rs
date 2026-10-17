@@ -1,5 +1,6 @@
 #[cfg(any(feature = "inspector", debug_assertions))]
 use crate::Inspector;
+use crate::measurement::measure;
 use crate::{
     Action, AnyDrag, AnyElement, AnyImageCache, AnyTooltip, AnyView, App, AppContext, Arena, Asset,
     AsyncWindowContext, AvailableSpace, Background, BorderStyle, Bounds, BoxShadow, Capslock,
@@ -49,8 +50,8 @@ use std::{
     },
     time::{Duration, Instant},
 };
+use util::ResultExt;
 use util::post_inc;
-use util::{ResultExt, measure};
 use uuid::Uuid;
 
 mod prompts;
@@ -1124,10 +1125,12 @@ impl Window {
         platform_window.on_input({
             let mut cx = cx.to_async();
             Box::new(move |event| {
-                handle
-                    .update(&mut cx, |_, window, cx| window.dispatch_event(event, cx))
-                    .log_err()
-                    .unwrap_or(DispatchEventResult::default())
+                measure("input callback duration", || {
+                    handle
+                        .update(&mut cx, |_, window, cx| window.dispatch_event(event, cx))
+                        .log_err()
+                        .unwrap_or(DispatchEventResult::default())
+                })
             })
         });
         platform_window.on_hit_test_window_control({
@@ -3729,7 +3732,9 @@ impl Window {
 
     fn dispatch_key_event(&mut self, event: &dyn Any, cx: &mut App) {
         if self.invalidator.is_dirty() {
-            self.draw(cx).clear();
+            measure("input frame duration", || {
+                self.draw(cx).clear();
+            });
         }
 
         let node_id = self.focus_node_id_in_rendered_frame(self.focus);

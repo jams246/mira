@@ -8,6 +8,8 @@ extern crate self as gpui;
 
 #[macro_use]
 mod action;
+mod measurement;
+pub use measurement::set_measurement_sink;
 mod app;
 
 mod arena;

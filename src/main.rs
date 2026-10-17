@@ -7,6 +7,7 @@ mod code_panel;
 mod code_view;
 mod content_paint;
 mod controls;
+mod diagnostics;
 mod file;
 mod find_highlight;
 mod find_state;
@@ -49,6 +50,11 @@ fn main() {
     timing.mark("platform_created");
     application.run(move |cx: &mut App| {
         timing.mark("event_loop_ready");
+        let initial_load = initial_paths.first().map(|path| {
+            let path = path.clone();
+            cx.background_executor()
+                .spawn(async move { file::load(&path) })
+        });
         viewer::bind_keys(cx);
         shell::bind_keys(cx);
         controls::bind_keys(cx);
@@ -70,10 +76,9 @@ fn main() {
                 timing.scale(window.scale_factor());
                 window.on_next_frame(move |_, _| timing.mark("first_frame_callback"));
                 let shell = cx.new(|cx| Shell::new(window, cx, timing));
-                if !initial_paths.is_empty() {
-                    let shell = shell.clone();
-                    window.on_next_frame(move |window, cx| {
-                        shell.update(cx, |shell, cx| shell.open_paths(initial_paths, window, cx));
+                if let Some(prepared) = initial_load {
+                    shell.update(cx, |shell, cx| {
+                        shell.open_initial_paths(initial_paths, prepared, window, cx)
                     });
                 }
                 shell
@@ -91,4 +96,5 @@ fn main() {
         .detach();
         cx.activate(true);
     });
+    diagnostics::flush();
 }
