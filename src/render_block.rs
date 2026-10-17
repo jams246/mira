@@ -22,17 +22,7 @@ pub(crate) fn block(
         block: index,
         byte: 0,
     };
-    let mut context = block.context;
-    let mut ancestors = Vec::new();
-    while let Some(index) = context {
-        let ancestor = &document.contexts[index];
-        ancestors.push(&ancestor.kind);
-        context = ancestor.parent;
-        // shortcut: Show eight ancestor frames, expand when deeper nesting needs distinct borders.
-        if ancestors.len() == 8 {
-            break;
-        }
-    }
+    let ancestors = visible_ancestors(document, block.context);
     let width: f32 = window.viewport_size().width.into();
     let gutter = (width * 0.3 / ancestors.len().max(1) as f32).min(28.);
     let mut resources = resources.clone();
@@ -187,6 +177,25 @@ pub(crate) fn block(
         .into_any_element()
 }
 
+fn visible_ancestors(document: &Document, mut context: Option<usize>) -> Vec<&ContextKind> {
+    let mut ancestors = Vec::new();
+    let mut has_item = false;
+    while let Some(index) = context {
+        let ancestor = &document.contexts[index];
+        context = ancestor.parent;
+        let is_item = matches!(ancestor.kind, ContextKind::ListItem { .. });
+        if ancestors.len() < 8 || (is_item && !has_item) {
+            ancestors.push(&ancestor.kind);
+        }
+        has_item |= is_item;
+        // shortcut: Show eight frames plus the nearest list item; expand for distinct deep borders.
+        if ancestors.len() >= 8 && has_item {
+            break;
+        }
+    }
+    ancestors
+}
+
 fn marker_label(number: Option<u64>, checked: Option<bool>) -> String {
     match checked {
         Some(true) => "☑".into(),
@@ -214,3 +223,6 @@ fn image_inset(ancestors: &[&ContextKind], gutter: f32, size: f32, window: &Wind
         })
         .sum()
 }
+
+#[cfg(test)]
+mod tests;
