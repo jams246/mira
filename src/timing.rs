@@ -1,5 +1,7 @@
 use std::time::{Duration, Instant};
 
+use gpui::{AnyElement, IntoElement, canvas, prelude::*};
+
 #[derive(Clone, Copy)]
 pub(crate) struct Timing {
     start: Instant,
@@ -22,5 +24,15 @@ impl Timing {
         if self.enabled {
             eprintln!("MIRA {event} {:.3}ms", duration.as_secs_f64() * 1000.);
         }
+    }
+
+    pub(crate) fn paint_marker(self, event: &'static str) -> Option<AnyElement> {
+        self.enabled.then(|| {
+            canvas(|_, _, _| (), move |_, _, _, _| self.mark(event))
+                .absolute()
+                .inset_0()
+                .size_full()
+                .into_any_element()
+        })
     }
 }

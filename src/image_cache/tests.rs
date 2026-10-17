@@ -8,6 +8,8 @@ fn cache() -> CacheHandle {
             document: mira::markdown::parse(String::new()),
             read_time: Duration::ZERO,
             parse_time: Duration::ZERO,
+            code: HashMap::new(),
+            code_index_time: Duration::ZERO,
         }),
         EntityId::from(1),
     )

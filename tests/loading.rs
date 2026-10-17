@@ -32,6 +32,33 @@ fn load_accepts_empty_and_uppercase_markdown_extension() {
 }
 
 #[test]
+fn load_indexes_large_code_without_changing_source() {
+    let line = "alpha\t日本語😀\n";
+    let code = line.repeat(2000);
+    let source = format!("```\nshort\n```\n\n```\n{code}```\n");
+    let path = fixture("indexed-code.md", source.as_bytes());
+    let loaded = file::load(&path).unwrap();
+    eprintln!("code indexing {:?}", loaded.code_index_time);
+    assert_eq!(loaded.code.len(), 1);
+    let (&block, layout) = loaded.code.iter().next().unwrap();
+    let mira::document::BlockKind::Code { runs, .. } = &loaded.document.blocks[block].kind else {
+        panic!("indexed block must retain its code model");
+    };
+    assert_eq!(layout.line_count(), 2001);
+    let first = layout.line(0).unwrap();
+    assert_eq!(first.bytes, 0..line.len() - 1);
+    assert!(!first.ascii);
+    let slice = layout.slice(&loaded.document, runs, first.bytes);
+    let text: String = slice
+        .iter()
+        .map(|run| run.text.as_str(&loaded.document.source))
+        .collect();
+    assert_eq!(text, line.trim_end_matches('\n'));
+    assert_eq!(loaded.document.source, source);
+    assert_eq!(fs::read(path).unwrap(), source.as_bytes());
+}
+
+#[test]
 fn load_reports_missing_file() {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(".verification/loading-tests/never-created-missing.md");
