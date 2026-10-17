@@ -105,6 +105,10 @@ pub(crate) fn block(
                     .w_full()
                     .flex()
                     .overflow_x_scroll()
+                    .map(|mut scroller| {
+                        scroller.style().restrict_scroll_to_axis = Some(true);
+                        scroller
+                    })
                     .p_3()
                     .bg(rgb(0xeeeeee))
                     .rounded_md()

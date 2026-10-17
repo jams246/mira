@@ -99,6 +99,15 @@ pub(crate) struct TextCache {
 }
 
 impl TextCache {
+    pub(crate) fn height_known(&self, block: usize, columns: &Range<usize>) -> bool {
+        self.entries
+            .iter()
+            .filter(|(source, _)| {
+                source.block == block && source.cell.is_some_and(|cell| columns.contains(&cell))
+            })
+            .all(|(_, entry)| entry.borrow().complete)
+    }
+
     pub(crate) fn new(loaded: Arc<LoadedDocument>, owner: EntityId) -> CacheHandle {
         Rc::new(RefCell::new(Self {
             loaded,

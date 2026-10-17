@@ -14,6 +14,7 @@ mod render_table;
 mod render_text;
 mod selection;
 mod selection_text;
+mod table_state;
 mod text_background;
 mod text_cache;
 mod text_hit_test;

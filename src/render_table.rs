@@ -1,8 +1,6 @@
-use std::{cell::RefCell, collections::HashMap, ops::Range, rc::Rc};
+use std::{ops::Range, rc::Rc};
 
-use gpui::{
-    AnyElement, App, IntoElement, ScrollHandle, TextAlign, Window, div, prelude::*, px, rgb,
-};
+use gpui::{AnyElement, App, IntoElement, TextAlign, Window, canvas, div, prelude::*, px, rgb};
 use mira::document::{BlockKind, Document};
 use pulldown_cmark::Alignment;
 
@@ -13,7 +11,7 @@ use crate::{
     selection::Position,
 };
 
-pub(crate) type TableScrolls = Rc<RefCell<HashMap<usize, ScrollHandle>>>;
+pub(crate) use crate::table_state::TableScrolls;
 const COLUMN_WIDTH: f32 = 240.;
 
 pub(crate) fn row(
@@ -34,14 +32,32 @@ pub(crate) fn row(
     let scroll = resources
         .tables
         .borrow_mut()
+        .scrolls
         .entry(*table)
         .or_default()
         .clone();
     let columns = visible_columns(cells.len(), -f32::from(scroll.offset().x), resources.width);
+    let minimum = resources.tables.borrow_mut().minimum(index, window);
+    let tables = Rc::clone(&resources.tables);
+    let texts = Rc::clone(&resources.texts);
+    let observed_columns = columns.clone();
+    let measure = canvas(
+        move |bounds, _, _| {
+            if texts.borrow().height_known(index, &observed_columns) {
+                tables.borrow_mut().observe(index, bounds.size.height);
+            }
+        },
+        |_, (), _, _| {},
+    )
+    .absolute()
+    .inset_0()
+    .size_full();
     let mut resources = resources.clone();
     let mut contents = div()
+        .relative()
         .flex()
         .flex_none()
+        .min_h(minimum)
         .w(px(cells.len() as f32 * COLUMN_WIDTH))
         .child(
             div()
@@ -58,7 +74,6 @@ pub(crate) fn row(
                 + 1
         })
         .sum();
-    // shortcut: Wide rows measure active columns; index unseen heights for varied-height wide rows.
     for (column, runs) in cells
         .iter()
         .enumerate()
@@ -123,20 +138,22 @@ pub(crate) fn row(
             .w(px((cells.len() - columns.end) as f32 * COLUMN_WIDTH))
             .h_0(),
     );
+    contents = contents.child(measure);
     div()
         .id(("table-row", index))
         .w_full()
         .flex()
         .overflow_x_scroll()
+        .map(|mut scroller| {
+            scroller.style().restrict_scroll_to_axis = Some(true);
+            scroller
+        })
         .track_scroll(&scroll)
         .child(contents)
         .into_any_element()
 }
 
 fn visible_columns(count: usize, left: f32, width: f32) -> Range<usize> {
-    if count <= 64 {
-        return 0..count;
-    }
     let first = ((left.max(0.) / COLUMN_WIDTH) as usize)
         .saturating_sub(1)
         .min(count);
@@ -155,6 +172,7 @@ mod tests {
         assert_eq!(visible_columns(40_000, 0., 936.), 0..5);
         assert_eq!(visible_columns(40_000, 2400., 936.), 9..15);
         assert_eq!(visible_columns(40_000, 9_599_064., 936.), 39_995..40_000);
-        assert_eq!(visible_columns(3, 500., 400.), 0..3);
+        assert_eq!(visible_columns(3, 300., 400.), 0..3);
+        assert_eq!(visible_columns(20, 0., 936.), 0..5);
     }
 }
