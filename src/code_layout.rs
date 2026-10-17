@@ -2,7 +2,11 @@
 
 use std::{collections::HashMap, ops::Range};
 
-use crate::document::{BlockKind, Document, Inline, Text};
+use crate::document::{BlockKind, Document, Inline};
+use crate::inline_index::InlineIndex;
+
+#[cfg(test)]
+use crate::document::Text;
 
 /// Small code blocks retain ordinary native text layout.
 pub const MIN_INDEXED_BYTES: usize = 32 * 1024;
@@ -31,7 +35,7 @@ struct Tab {
 
 /// Layout-independent indexes built once off the UI thread without copying code text.
 pub struct CodeLayout {
-    runs: Vec<usize>,
+    runs: InlineIndex,
     lines: Vec<LineIndex>,
     tabs: Vec<Tab>,
     len: usize,
@@ -60,7 +64,7 @@ pub fn index(document: &Document) -> HashMap<usize, CodeLayout> {
 impl CodeLayout {
     fn build(document: &Document, runs: &[Inline]) -> Self {
         let mut result = Self {
-            runs: Vec::with_capacity(runs.len() + 1),
+            runs: InlineIndex::new(document, runs),
             lines: Vec::new(),
             tabs: Vec::new(),
             len: 0,
@@ -68,7 +72,6 @@ impl CodeLayout {
         };
         let (mut start, mut columns, mut extra, mut ascii) = (0, 0, 0, true);
         for run in runs {
-            result.runs.push(result.len);
             for ch in run.text.as_str(&document.source).chars() {
                 match ch {
                     '\n' => {
@@ -94,7 +97,6 @@ impl CodeLayout {
                 result.len += ch.len_utf8();
             }
         }
-        result.runs.push(result.len);
         result.push_line(start, columns, ascii);
         result
     }
@@ -166,37 +168,7 @@ impl CodeLayout {
 
     /// Borrows source ranges and copies only bounded normalized text in a visible slice.
     pub fn slice(&self, document: &Document, runs: &[Inline], range: Range<usize>) -> Vec<Inline> {
-        let first = self
-            .runs
-            .partition_point(|start| *start <= range.start)
-            .saturating_sub(1);
-        let mut output = Vec::new();
-        for (index, run) in runs.iter().enumerate().skip(first) {
-            let start = self.runs[index];
-            if start >= range.end {
-                break;
-            }
-            let text = run.text.as_str(&document.source);
-            let a = range.start.saturating_sub(start).min(text.len());
-            let b = range.end.saturating_sub(start).min(text.len());
-            if a >= b {
-                continue;
-            }
-            let Some(slice) = text.get(a..b) else {
-                continue;
-            };
-            output.push(Inline {
-                source_range: run.source_range.clone(),
-                text: match &run.text {
-                    Text::Source(source) => Text::Source(source.start + a..source.start + b),
-                    Text::Literal(_) => Text::Literal(slice.into()),
-                },
-                style: run.style,
-                link: run.link,
-                image: None,
-            });
-        }
-        output
+        self.runs.slice(document, runs, range)
     }
 }
 

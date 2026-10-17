@@ -4,6 +4,7 @@
 
 pub mod code_layout;
 pub mod document;
+pub mod inline_index;
 pub mod links;
 pub mod local_image;
 pub mod markdown;
