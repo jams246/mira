@@ -69,7 +69,7 @@ fn code_crlf_and_lf_preserve_equal_logical_lines() {
 #[test]
 fn raw_html_remains_literal_text() {
     let document = parse("<script>alert('no execution')</script>\n\ntext <b>bold</b>".into());
-    let BlockKind::RawHtml(raw) = &document.blocks[0].kind else {
+    let BlockKind::Paragraph(raw) = &document.blocks[0].kind else {
         panic!("Expected literal HTML");
     };
     let BlockKind::Paragraph(inline) = &document.blocks[1].kind else {
@@ -163,14 +163,36 @@ fn deep_quotes_use_iterative_context_storage() {
 }
 
 #[test]
-fn all_source_ranges_remain_valid_utf8_boundaries() {
-    let document = parse("# Héllo 😀\n\n- **日本語** &amp; `x`\n\n![alt](image.png)\n".into());
-    assert!(
-        document
-            .blocks
-            .iter()
-            .all(|block| document.source.get(block.source_range.clone()).is_some())
+fn source_backed_text_ranges_remain_valid_utf8_boundaries() {
+    let document = parse(
+        concat!(
+            "# Héllo 😀\n\n- **日本語** &amp; `x`\n\n![alt](image.png)\n\n",
+            "| a | b |\n|---|---|\n| é | 😀 |\n\n```rust\n東京\n```\n\n<div>café</div>\n\n---\n",
+        )
+        .into(),
     );
+    let valid = |value: &Text| match value {
+        Text::Source(range) => document.source.get(range.clone()).is_some(),
+        Text::Literal(_) => true,
+    };
+    for block in &document.blocks {
+        let sequences = match &block.kind {
+            BlockKind::Paragraph(runs)
+            | BlockKind::Heading { runs, .. }
+            | BlockKind::Code { runs, .. }
+            | BlockKind::Image { alt: runs, .. } => std::slice::from_ref(runs),
+            BlockKind::TableRow { cells, .. } => cells.as_slice(),
+            BlockKind::Rule => &[],
+        };
+        assert!(sequences.iter().flatten().all(|run| valid(&run.text)));
+        if let BlockKind::Code {
+            language: Some(language),
+            ..
+        } = &block.kind
+        {
+            assert!(valid(language));
+        }
+    }
 }
 
 #[test]

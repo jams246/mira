@@ -7,6 +7,8 @@ mod table;
 #[cfg(test)]
 mod edge_tests;
 #[cfg(test)]
+mod html_tests;
+#[cfg(test)]
 mod syntax_tests;
 #[cfg(test)]
 mod tests;
@@ -25,14 +27,13 @@ pub fn parse(source: String) -> Document {
     for (event, range) in Parser::new_ext(&source, options).into_offset_iter() {
         match event {
             Event::Start(tag) => match tag {
-                Tag::Paragraph => state.begin(BlockKind::Paragraph(Vec::with_capacity(1)), range),
-                Tag::Heading { level, .. } => state.begin(
-                    BlockKind::Heading {
-                        level: level as u8,
-                        runs: Vec::with_capacity(1),
-                    },
-                    range,
-                ),
+                Tag::Paragraph | Tag::HtmlBlock => {
+                    state.begin(BlockKind::Paragraph(Vec::with_capacity(1)))
+                }
+                Tag::Heading { level, .. } => state.begin(BlockKind::Heading {
+                    level: level as u8,
+                    runs: Vec::with_capacity(1),
+                }),
                 Tag::CodeBlock(kind) => {
                     let language = match kind {
                         CodeBlockKind::Fenced(info) if !info.is_empty() => {
@@ -40,22 +41,17 @@ pub fn parse(source: String) -> Document {
                         }
                         _ => None,
                     };
-                    state.begin(
-                        BlockKind::Code {
-                            runs: Vec::new(),
-                            language,
-                        },
-                        range,
-                    );
+                    state.begin(BlockKind::Code {
+                        runs: Vec::new(),
+                        language,
+                    });
                 }
-                Tag::HtmlBlock => state.begin(BlockKind::RawHtml(Vec::with_capacity(1)), range),
                 Tag::BlockQuote(_) => {
                     state.finish();
                     state.push_context(ContextKind::Quote);
                 }
                 Tag::List(start) => {
-                    state.finish_pending_item(range.clone());
-                    state.finish();
+                    state.finish_pending_item();
                     state.lists.push(start);
                 }
                 Tag::Item => state.begin_item(),
@@ -67,7 +63,7 @@ pub fn parse(source: String) -> Document {
                 }
                 Tag::TableHead | Tag::TableRow => {
                     if let Some(table) = &mut state.table {
-                        table.begin_row(matches!(tag, Tag::TableHead), range);
+                        table.begin_row(matches!(tag, Tag::TableHead));
                     }
                 }
                 Tag::TableCell => {
@@ -79,9 +75,7 @@ pub fn parse(source: String) -> Document {
                     state.inline.start(tag, &mut state.targets);
                 }
                 Tag::Image { dest_url, .. } => {
-                    state
-                        .inline
-                        .begin_image(dest_url, range, &mut state.targets)
+                    state.inline.begin_image(dest_url, &mut state.targets)
                 }
                 _ => {}
             },
@@ -97,7 +91,7 @@ pub fn parse(source: String) -> Document {
                     state.finish();
                     state.lists.pop();
                 }
-                TagEnd::Item => state.end_item(range),
+                TagEnd::Item => state.end_item(),
                 TagEnd::TableCell => {
                     if let Some(table) = &mut state.table {
                         table.finish_cell();
@@ -140,7 +134,7 @@ pub fn parse(source: String) -> Document {
             }
             Event::Rule => {
                 state.finish();
-                state.emit(BlockKind::Rule, range);
+                state.emit(BlockKind::Rule);
             }
             Event::TaskListMarker(checked) => state.task(checked),
             _ => {}

@@ -138,7 +138,6 @@ fn block_text(document: &Document, index: usize) -> String {
     };
     match &block.kind {
         BlockKind::Paragraph(runs)
-        | BlockKind::RawHtml(runs)
         | BlockKind::Heading { runs, .. }
         | BlockKind::Code { runs, .. } => plain(runs),
         BlockKind::Image { alt, .. } => plain(alt),

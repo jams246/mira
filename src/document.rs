@@ -54,8 +54,6 @@ pub struct InlineStyle {
 /// A text run or image at its original inline position.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Inline {
-    /// Original Markdown byte range, including syntax when applicable.
-    pub source_range: Range<usize>,
     /// Display text, or plain alternative text for an image.
     pub text: Text,
     /// Combined text formatting.
@@ -69,8 +67,6 @@ pub struct Inline {
 /// A leaf suitable for a variable-height document list.
 #[derive(Debug, PartialEq)]
 pub struct Block {
-    /// Original Markdown bytes associated with this block.
-    pub source_range: Range<usize>,
     /// Immediate enclosing context index.
     pub context: Option<usize>,
     /// Whether this is the first leaf of its enclosing list item.
@@ -82,7 +78,7 @@ pub struct Block {
 /// Native-renderable Markdown content.
 #[derive(Debug, PartialEq)]
 pub enum BlockKind {
-    /// A paragraph, including implicit paragraphs in tight lists.
+    /// A paragraph, including implicit tight-list paragraphs and literal raw HTML.
     Paragraph(Vec<Inline>),
     /// A heading with level from one through six.
     Heading {
@@ -118,8 +114,6 @@ pub enum BlockKind {
         /// Cell text and formatting in column order.
         cells: Vec<Vec<Inline>>,
     },
-    /// Raw HTML, displayed literally rather than executed.
-    RawHtml(Vec<Inline>),
 }
 
 /// One shared ancestor in an iterative context arena.

@@ -96,7 +96,6 @@ impl InlineIndex {
                 continue;
             };
             output.push(Inline {
-                source_range: run.source_range.clone(),
                 text: match &run.text {
                     Text::Source(source) => Text::Source(source.start + a..source.start + b),
                     Text::Literal(_) => Text::Literal(slice.into()),

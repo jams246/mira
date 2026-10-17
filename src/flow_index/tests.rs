@@ -32,7 +32,6 @@ fn source_document(source: &str) -> (Document, Vec<Inline>) {
         tables: Vec::new(),
     };
     let run = Inline {
-        source_range: 0..source.len(),
         text: Text::Source(0..source.len()),
         style: InlineStyle::default(),
         link: None,
@@ -102,7 +101,8 @@ fn adjacent_empty_images_retain_distinct_occurrences_and_links() {
     let runs = runs(&document);
     assert_eq!(document.targets[runs[0].link.unwrap()], "one.md");
     assert_eq!(document.targets[runs[1].link.unwrap()], "#end");
-    assert_ne!(runs[0].source_range, runs[1].source_range);
+    assert_eq!(document.targets[runs[0].image.unwrap()], "one.png");
+    assert_eq!(document.targets[runs[1].image.unwrap()], "two.png");
     assert_eq!(plain(&document, &index.slice(&document, runs, 0..1)), "Z");
 }
 
