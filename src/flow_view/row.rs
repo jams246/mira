@@ -85,14 +85,19 @@ pub(crate) fn build(
                 resources,
             ),
             PieceKind::Image { inline } => {
-                let run = &runs[inline];
+                let Some(run) = runs.get(inline) else {
+                    continue;
+                };
+                let Some(target) = run.image else {
+                    continue;
+                };
                 let mut resources = resources.clone();
                 resources.width = input.width;
                 render_image::image(
                     document,
                     position,
                     ImageContent {
-                        target: run.image.expect("indexed image"),
+                        target,
                         alt: std::slice::from_ref(run),
                         link: run.link,
                         occurrence: inline,
