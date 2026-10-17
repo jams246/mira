@@ -1,3 +1,5 @@
+mod reveal;
+
 use gpui::{
     AnyElement, App, AvailableSpace, Bounds, Element, ElementId, GlobalElementId,
     InspectorElementId, IntoElement, LayoutId, Pixels, Style, Window, font, point, px, size,
@@ -100,6 +102,7 @@ impl Element for CodeView {
         let BlockKind::Code { runs, .. } = &loaded.document.blocks[self.block].kind else {
             return (Vec::new(), Vec::new());
         };
+        let pending_row = reveal::prepare(self, bounds, *metrics, window, cx);
         let mask = window.content_mask().bounds;
         let first =
             (((mask.top() - bounds.top()).max(px(0.)) / line_height) as usize).saturating_sub(4);
@@ -127,7 +130,11 @@ impl Element for CodeView {
                 };
                 let entry =
                     CodeCache::request(&self.resources.codes, source, &line, font_size.into());
-                let target = f32::from((mask.right() - bounds.left()).max(px(0.))) + 256.;
+                let target = if pending_row == Some(row) {
+                    f32::INFINITY
+                } else {
+                    f32::from((mask.right() - bounds.left()).max(px(0.))) + 256.
+                };
                 CodeCache::demand(&self.resources.codes, &entry, target, window, cx);
                 unicode.push(CodeGlyphs::prepare(
                     &self.resources,
@@ -195,7 +202,7 @@ impl Element for CodeView {
             child.paint(window, cx);
         }
         for row in &children.1 {
-            if row.paint(&self.resources, window) {
+            if row.paint(&self.resources, window, cx) {
                 self.resources.paint.mark(window);
             }
         }

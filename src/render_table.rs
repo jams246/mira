@@ -36,6 +36,16 @@ pub(crate) fn row(
         .entry(*table)
         .or_default()
         .clone();
+    if let Some(target) = resources.reveal.borrow().target
+        && target.block == index
+        && let Some(column) = target.cell
+    {
+        let left = column as f32 * COLUMN_WIDTH;
+        let visible_left = -f32::from(scroll.offset().x);
+        if left < visible_left || left + COLUMN_WIDTH > visible_left + resources.width {
+            scroll.set_offset(gpui::point(px(-left), scroll.offset().y));
+        }
+    }
     let columns = visible_columns(cells.len(), -f32::from(scroll.offset().x), resources.width);
     let minimum = resources.tables.borrow_mut().minimum(index, window);
     let tables = Rc::clone(&resources.tables);

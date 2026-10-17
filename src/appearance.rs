@@ -12,6 +12,8 @@ pub(crate) struct Palette {
     pub rule: Hsla,
     pub muted: Hsla,
     pub error: Hsla,
+    pub find: Hsla,
+    pub find_active: Hsla,
 }
 
 impl Palette {
@@ -34,6 +36,8 @@ impl Palette {
             rule: rgb(0xd8d8d8).into(),
             muted: rgb(0x62666a).into(),
             error: rgb(0xa02020).into(),
+            find: rgb(0xffed9b).into(),
+            find_active: rgb(0xffbf59).into(),
         }
     }
 
@@ -49,6 +53,8 @@ impl Palette {
             rule: rgb(0x50545c).into(),
             muted: rgb(0xa9adb5).into(),
             error: rgb(0xff9292).into(),
+            find: rgb(0x5a4b16).into(),
+            find_active: rgb(0x80601a).into(),
         }
     }
 }

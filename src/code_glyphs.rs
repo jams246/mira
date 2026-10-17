@@ -1,8 +1,9 @@
+mod background;
 mod interaction;
 
 use std::rc::Rc;
 
-use gpui::{Bounds, Hitbox, Pixels, Point, ShapedLine, Window, fill, point, px, size};
+use gpui::{App, Bounds, Hitbox, Pixels, Point, ShapedLine, Window, point, px, size};
 
 use crate::{
     code_cache::{self, Chunk, Entry, Source},
@@ -89,7 +90,12 @@ impl CodeGlyphs {
         }
     }
 
-    pub(crate) fn paint(&self, resources: &RenderContext, window: &mut Window) -> bool {
+    pub(crate) fn paint(
+        &self,
+        resources: &RenderContext,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> bool {
         if let Some(status) = &self.status {
             let origin = point(
                 self.bounds.left().max(window.content_mask().bounds.left()),
@@ -121,31 +127,26 @@ impl CodeGlyphs {
                 self.bounds.left() + px(chunk.x - chunk.local_x),
                 self.bounds.top(),
             );
-            if let Some(selection) = resources.selection.borrow().range_at(
+            crate::reveal::observe_code(
+                resources,
                 crate::selection::Position {
                     block: self.source.block,
                     byte: chunk.window.start,
                 },
                 chunk.window.len(),
-            ) {
-                let start = (chunk.window.start + selection.start).max(chunk.core.start);
-                let end = (chunk.window.start + selection.end).min(chunk.core.end);
-                if start < end {
-                    let x = piece
-                        .line
-                        .x_for_index(piece.mapping.to_display(start - chunk.window.start));
-                    let end = piece
-                        .line
-                        .x_for_index(piece.mapping.to_display(end - chunk.window.start));
-                    window.paint_quad(fill(
-                        Bounds::new(
-                            point(origin.x + x, origin.y),
-                            size((end - x).max(px(0.)), self.bounds.size.height),
-                        ),
-                        resources.palette.selection,
-                    ));
-                }
-            }
+                &piece.mapping,
+                &piece.line,
+                (origin, self.bounds.size.height),
+                cx,
+            );
+            background::paint(
+                piece,
+                resources,
+                self.source.block,
+                origin,
+                self.bounds.size.height,
+                window,
+            );
             let baseline = (self.bounds.size.height - piece.line.ascent - piece.line.descent) / 2.
                 + piece.line.ascent;
             for run in &piece.line.runs {

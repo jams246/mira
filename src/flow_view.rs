@@ -1,3 +1,4 @@
+mod reveal;
 pub(crate) mod row;
 
 use std::{cell::RefCell, rc::Rc};
@@ -118,7 +119,9 @@ impl Element for FlowView {
         let Some(entry) = layout.borrow().clone() else {
             return Vec::new();
         };
-        let target = if mask.bottom() >= bounds.bottom() - px(48.) {
+        let target = if reveal::prepare(self, &entry, bounds, cx)
+            || mask.bottom() >= bounds.bottom() - px(48.)
+        {
             f32::INFINITY
         } else {
             f32::from((mask.bottom() - bounds.top()).max(px(0.))) + 200.

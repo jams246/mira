@@ -9,7 +9,7 @@ impl Viewer {
         root: Div,
         palette: Palette,
         window: &Window,
-        cx: &mut Context<Self>,
+        _cx: &mut Context<Self>,
     ) -> Div {
         let message = div()
             .w(px(
@@ -39,7 +39,7 @@ impl Viewer {
                     .border_1()
                     .border_color(palette.border)
                     .hover(move |style| style.bg(palette.panel))
-                    .on_click(cx.listener(|viewer, _, window, cx| viewer.open(&Open, window, cx)))
+                    .on_click(|_, window, cx| window.dispatch_action(Box::new(Open), cx))
                     .child("Open Markdown (Ctrl+O)"),
             )
     }

@@ -27,12 +27,13 @@ pub(crate) fn block(
     let gutter = (width * 0.3 / ancestors.len().max(1) as f32).min(28.);
     let mut resources = resources.clone();
     let mut content = div().w_full().min_w_0();
-    let size = match &block.kind {
-        BlockKind::Heading { level, .. } => {
-            [32., 27., 23., 20., 18., 16.][usize::from(*level).saturating_sub(1).min(5)]
-        }
-        _ => 16.,
-    };
+    let size = resources.scale
+        * match &block.kind {
+            BlockKind::Heading { level, .. } => {
+                [32., 27., 23., 20., 18., 16.][usize::from(*level).saturating_sub(1).min(5)]
+            }
+            _ => 16.,
+        };
     let has_images = match &block.kind {
         BlockKind::Image { .. } => true,
         BlockKind::Paragraph(runs) | BlockKind::RawHtml(runs) | BlockKind::Heading { runs, .. } => {
@@ -93,22 +94,7 @@ pub(crate) fn block(
                     cx,
                 )
             };
-            content = content.child(
-                div()
-                    .id(("code", index))
-                    .w_full()
-                    .flex()
-                    .overflow_x_scroll()
-                    .map(|mut scroller| {
-                        scroller.style().restrict_scroll_to_axis = Some(true);
-                        scroller
-                    })
-                    .p_3()
-                    .bg(resources.palette.panel)
-                    .rounded_md()
-                    .text_size(px(14.))
-                    .child(text),
-            );
+            content = content.child(crate::code_panel::panel(index, text, &resources));
         }
         BlockKind::TableRow { table, .. } => {
             if document.blocks.get(index + 1).is_some_and(|next| matches!(next.kind, BlockKind::TableRow { table: next_table, .. } if next_table == *table)) {

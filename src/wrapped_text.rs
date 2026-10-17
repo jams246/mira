@@ -1,3 +1,4 @@
+mod reveal;
 mod source;
 
 use mira::inline_index::InlineIndex;
@@ -116,6 +117,7 @@ impl Element for WrappedText {
         let Some(entry) = entry.borrow().clone() else {
             return Vec::new();
         };
+        let revealing = reveal::prepare(self, &entry, bounds, *line_height, cx);
         let mask = window.content_mask().bounds;
         if !bounds.intersects(&mask) {
             return Vec::new();
@@ -123,7 +125,7 @@ impl Element for WrappedText {
         let first = ((mask.top() - bounds.top()).max(px(0.)) / *line_height) as usize;
         let last = (((mask.bottom() - bounds.top()).max(px(0.)) / *line_height).ceil() as usize)
             .saturating_add(1);
-        let target = if mask.bottom() >= bounds.bottom() - *line_height * 2. {
+        let target = if revealing || mask.bottom() >= bounds.bottom() - *line_height * 2. {
             usize::MAX
         } else {
             last.saturating_add(8)

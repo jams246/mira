@@ -3,7 +3,7 @@ use gpui::{ClipboardItem, Context, ListOffset, Pixels, Window, px};
 use super::{Bottom, Copy, PageDown, PageUp, SelectAll, Top, Viewer};
 
 impl Viewer {
-    pub(super) fn copy(&mut self, _: &Copy, _: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn copy(&mut self, _: &Copy, _: &mut Window, cx: &mut Context<Self>) {
         if let Some(loaded) = &self.loaded {
             let text = self.selection.borrow().text(&loaded.document);
             if !text.is_empty() {
@@ -12,14 +12,15 @@ impl Viewer {
         }
     }
 
-    pub(super) fn select_all(&mut self, _: &SelectAll, _: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn select_all(&mut self, _: &SelectAll, _: &mut Window, cx: &mut Context<Self>) {
         if let Some(loaded) = &self.loaded {
             self.selection.borrow_mut().select_all(&loaded.document);
             cx.notify();
         }
     }
 
-    pub(super) fn top(&mut self, _: &Top, _: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn top(&mut self, _: &Top, _: &mut Window, cx: &mut Context<Self>) {
+        self.reveal.borrow_mut().target = None;
         self.follow_bottom = false;
         self.list.scroll_to(ListOffset {
             item_ix: 0,
@@ -28,7 +29,8 @@ impl Viewer {
         cx.notify();
     }
 
-    pub(super) fn bottom(&mut self, _: &Bottom, _: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn bottom(&mut self, _: &Bottom, _: &mut Window, cx: &mut Context<Self>) {
+        self.reveal.borrow_mut().target = None;
         self.follow_bottom = true;
         self.list.scroll_to(ListOffset {
             item_ix: self.list.item_count(),
@@ -37,7 +39,8 @@ impl Viewer {
         cx.notify();
     }
 
-    pub(super) fn page_up(&mut self, _: &PageUp, _: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn page_up(&mut self, _: &PageUp, _: &mut Window, cx: &mut Context<Self>) {
+        self.reveal.borrow_mut().target = None;
         self.follow_bottom = false;
         let top = self.list.logical_scroll_top();
         let viewport = self.list.viewport_bounds();
@@ -53,7 +56,8 @@ impl Viewer {
         cx.notify();
     }
 
-    pub(super) fn page_down(&mut self, _: &PageDown, _: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn page_down(&mut self, _: &PageDown, _: &mut Window, cx: &mut Context<Self>) {
+        self.reveal.borrow_mut().target = None;
         self.follow_bottom = false;
         let top = self.list.logical_scroll_top();
         let viewport = self.list.viewport_bounds();

@@ -22,4 +22,8 @@ pub(crate) struct RenderContext {
     pub cell: Option<usize>,
     pub owner: EntityId,
     pub width: f32,
+    pub scale: f32,
+    pub highlights: crate::find_highlight::HighlightHandle,
+    pub reveal: crate::reveal::RevealHandle,
+    pub code_scrolls: crate::navigation_state::CodeScrolls,
 }

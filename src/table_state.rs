@@ -12,6 +12,10 @@ pub(crate) struct TableState {
 }
 
 impl TableState {
+    pub(crate) fn invalidate_heights(&mut self) {
+        self.heights.clear();
+        self.metrics = None;
+    }
     pub(crate) fn minimum(&mut self, row: usize, window: &Window) -> Pixels {
         let style = window.text_style();
         let metrics = (
