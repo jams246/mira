@@ -54,20 +54,31 @@ impl Viewer {
             cx.notify();
             return;
         }
+        let cancel = Arc::clone(&self.find.cancel);
+        let match_case = self.find.match_case;
+        let executor = cx.background_executor().clone();
+        let timer = executor.timer(Duration::from_millis(150));
+        let task = executor.spawn(async move {
+            timer.await;
+            search::search(&loaded.document, &query, match_case, &cancel)
+        });
+        self.await_search(task, navigate, window, cx);
+    }
+
+    pub(super) fn await_search(
+        &mut self,
+        task: Task<Vec<search::SearchMatch>>,
+        navigate: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.find.pending = true;
         let revision = self.find.revision;
         let generation = self.generation;
-        let cancel = Arc::clone(&self.find.cancel);
-        let match_case = self.find.match_case;
         let location = self.location();
-        let executor = cx.background_executor().clone();
         let search_timing = Timing::start();
-        let timer = executor.timer(Duration::from_millis(150));
         self.find.task = Some(cx.spawn_in(window, async move |viewer, cx| {
-            timer.await;
-            let results = executor
-                .spawn(async move { search::search(&loaded.document, &query, match_case, &cancel) })
-                .await;
+            let results = task.await;
             let _ = viewer.update_in(cx, |viewer, _, cx| {
                 if viewer.generation != generation
                     || viewer.find.revision != revision

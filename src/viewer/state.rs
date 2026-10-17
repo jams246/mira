@@ -1,4 +1,6 @@
 use super::*;
+#[cfg(all(test, windows))]
+pub(crate) mod native_tests;
 use gpui::Focusable;
 use mira::{
     links::{self, LinkTarget},

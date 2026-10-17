@@ -1,4 +1,6 @@
 mod actions;
+#[cfg(all(test, windows))]
+pub(crate) mod native_tests;
 mod opening;
 mod tabs;
 mod toolbar;

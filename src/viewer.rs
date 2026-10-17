@@ -7,6 +7,8 @@ mod navigation;
 mod outline;
 mod state;
 mod view;
+#[cfg(all(test, windows))]
+pub(crate) use state::native_tests::support as native_test_support;
 
 use crate::{
     code_cache,
