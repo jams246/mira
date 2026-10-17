@@ -92,7 +92,7 @@ impl Shell {
                         && let Some(tab) = shell.tabs.iter().find(|tab| tab.id == id)
                     {
                         tab.reader.update(cx, |reader, cx| {
-                            reader.navigate_fragment(&anchor, false, window, cx);
+                            reader.navigate_fragment(&anchor, false, cx);
                         });
                     }
                 }

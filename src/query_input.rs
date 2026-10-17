@@ -30,7 +30,7 @@ pub(crate) struct QueryInput {
 }
 
 impl QueryInput {
-    pub(crate) fn new(_window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub(crate) fn new(cx: &mut Context<Self>) -> Self {
         Self {
             focus: cx.focus_handle().tab_stop(true),
             content: "".into(),
@@ -48,7 +48,7 @@ impl QueryInput {
         &self.content
     }
 
-    pub(crate) fn select_all(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn select_all(&mut self, cx: &mut Context<Self>) {
         self.selected = 0..self.content.len();
         self.reversed = false;
         cx.notify();

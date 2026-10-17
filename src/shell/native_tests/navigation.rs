@@ -7,9 +7,9 @@ use super::{Shell, until};
 
 pub(super) async fn run(window: WindowHandle<Shell>, cx: &mut AsyncApp) {
     window
-        .update(cx, |shell, window, cx| {
+        .update(cx, |shell, _, cx| {
             shell.active().unwrap().update(cx, |reader, cx| {
-                reader.navigate_fragment("tail", false, window, cx);
+                reader.navigate_fragment("tail", false, cx);
                 assert!(reader.can_back() && !reader.can_forward());
             });
         })

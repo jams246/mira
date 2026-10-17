@@ -120,7 +120,7 @@ impl Viewer {
         self.content_paint = ContentPaint::new(self.timing);
         let location = self.reveal.borrow().reading;
         if let Some(anchor) = self.pending_anchor.take() {
-            self.navigate_fragment(&anchor, true, window, cx);
+            self.navigate_fragment(&anchor, true, cx);
         } else {
             self.jump(location, false, cx);
         }

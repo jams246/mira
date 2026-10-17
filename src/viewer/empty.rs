@@ -1,16 +1,10 @@
-use gpui::{Context, Div, Window, div, prelude::*, px};
+use gpui::{Div, Window, div, prelude::*, px};
 
 use super::{Open, Viewer};
 use crate::appearance::Palette;
 
 impl Viewer {
-    pub(super) fn empty(
-        &self,
-        root: Div,
-        palette: Palette,
-        window: &Window,
-        _cx: &mut Context<Self>,
-    ) -> Div {
+    pub(super) fn empty(&self, root: Div, palette: Palette, window: &Window) -> Div {
         let message = div()
             .w(px(
                 (f32::from(window.viewport_size().width) - 64.).clamp(1., 720.)

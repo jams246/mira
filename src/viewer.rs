@@ -80,7 +80,7 @@ impl Viewer {
             viewer.follow_bottom = false;
             cx.notify();
         }));
-        let input = cx.new(|cx| QueryInput::new(window, cx));
+        let input = cx.new(QueryInput::new);
         let query = cx.subscribe_in(&input, window, |viewer, _, _, window, cx| {
             viewer.search(true, window, cx)
         });

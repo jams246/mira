@@ -76,10 +76,10 @@ impl QueryInput {
     pub(super) fn select_everything(
         &mut self,
         _: &SelectAll,
-        window: &mut Window,
+        _: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.select_all(window, cx);
+        self.select_all(cx);
     }
 
     pub(super) fn home(&mut self, _: &Home, _: &mut Window, cx: &mut Context<Self>) {
@@ -178,7 +178,7 @@ impl QueryInput {
         self.selecting = true;
         let index = self.mouse_index(event.position);
         if event.click_count > 1 {
-            self.select_all(window, cx);
+            self.select_all(cx);
         } else if event.modifiers.shift {
             self.select_to(index, cx);
         } else {

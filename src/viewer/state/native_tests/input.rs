@@ -6,7 +6,7 @@ pub(super) fn run(window: WindowHandle<Viewer>, cx: &mut AsyncApp) {
     window
         .update(cx, |reader, window, cx| {
             reader.find.input.update(cx, |input, cx| {
-                input.select_all(window, cx);
+                input.select_all(cx);
                 input.replace_text_in_range(None, "", window, cx);
                 input.replace_and_mark_text_in_range(None, "é😀日", Some(1..3), window, cx);
                 assert_eq!(input.query(), "é😀日");
@@ -44,7 +44,7 @@ pub(super) fn run(window: WindowHandle<Viewer>, cx: &mut AsyncApp) {
                     Some("🔎")
                 );
                 assert_eq!(actual, Some(2..4));
-                input.select_all(window, cx);
+                input.select_all(cx);
                 input.replace_text_in_range(None, "", window, cx);
             });
             reader.close_find(window, cx);

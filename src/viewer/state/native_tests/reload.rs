@@ -17,7 +17,7 @@ pub(super) async fn run(window: WindowHandle<Viewer>, cx: &mut AsyncApp) {
                 .selection
                 .borrow_mut()
                 .select_all(&reader.loaded.as_ref().unwrap().document);
-            reader.navigate_fragment("removed", false, window, cx);
+            reader.navigate_fragment("removed", false, cx);
             reader.reveal.borrow_mut().reading = Location {
                 block: 3,
                 byte: 12,

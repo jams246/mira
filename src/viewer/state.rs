@@ -105,7 +105,6 @@ impl Viewer {
         &mut self,
         anchor: &str,
         initial: bool,
-        _: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if self.loading && self.loaded.is_none() {
@@ -153,7 +152,7 @@ impl Viewer {
                     open(path, anchor, window, cx);
                 }
             }
-            Ok(LinkTarget::Anchor(anchor)) => self.navigate_fragment(&anchor, false, window, cx),
+            Ok(LinkTarget::Anchor(anchor)) => self.navigate_fragment(&anchor, false, cx),
             Err(error) => self.link_error = Some(error),
         }
         cx.notify();
@@ -169,10 +168,10 @@ impl Viewer {
         }
     }
     pub(crate) fn zoom_in(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.set_zoom((self.zoom + 10).min(200), window, cx);
+        self.set_zoom(self.zoom + 10, window, cx);
     }
     pub(crate) fn zoom_out(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.set_zoom(self.zoom.saturating_sub(10).max(50), window, cx);
+        self.set_zoom(self.zoom - 10, window, cx);
     }
     pub(crate) fn zoom_reset(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.set_zoom(100, window, cx);

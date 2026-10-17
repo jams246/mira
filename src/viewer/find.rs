@@ -10,9 +10,7 @@ impl Viewer {
         }
         self.find.visible = true;
         self.find.highlights.borrow_mut().enabled = true;
-        self.find
-            .input
-            .update(cx, |input, cx| input.select_all(window, cx));
+        self.find.input.update(cx, |input, cx| input.select_all(cx));
         window.focus(&self.find.input.focus_handle(cx));
         self.search(false, window, cx);
         cx.notify();

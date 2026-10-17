@@ -18,7 +18,7 @@ pub(super) async fn run(window: WindowHandle<Viewer>, cx: &mut AsyncApp) {
                 item_ix: 0,
                 offset_in_item: px(0.),
             });
-            reader.navigate_fragment("second", false, window, cx);
+            reader.navigate_fragment("second", false, cx);
             assert!(reader.can_back() && !reader.can_forward());
             let block = reader.headings[1].block;
             reader.reveal.borrow_mut().reading = Location {

@@ -57,7 +57,7 @@ impl Render for Viewer {
             .text_color(palette.text)
             .font_family("Segoe UI");
         let Some(loaded) = self.loaded.clone() else {
-            return self.empty(root, palette, window, cx);
+            return self.empty(root, palette, window);
         };
         let images = self
             .images
