@@ -42,15 +42,26 @@ pub(crate) fn row(
     let texts = Rc::clone(&resources.texts);
     let flows = Rc::clone(&resources.flows);
     let observed_columns = columns.clone();
+    let prepaint_texts = Rc::clone(&texts);
+    let prepaint_flows = Rc::clone(&flows);
+    let prepaint_columns = columns.clone();
     let measure = canvas(
-        move |bounds, _, _| {
-            if texts.borrow().height_known(index, &observed_columns)
+        move |_, _, _| {
+            prepaint_texts
+                .borrow()
+                .height_known(index, &prepaint_columns)
+                && prepaint_flows
+                    .borrow()
+                    .height_known(index, &prepaint_columns)
+        },
+        move |bounds, known_before_cells, _, _| {
+            if known_before_cells
+                && texts.borrow().height_known(index, &observed_columns)
                 && flows.borrow().height_known(index, &observed_columns)
             {
                 tables.borrow_mut().observe(index, bounds.size.height);
             }
         },
-        |_, (), _, _| {},
     )
     .absolute()
     .inset_0()
@@ -62,6 +73,8 @@ pub(crate) fn row(
         .flex_none()
         .min_h(minimum)
         .w(px(cells.len() as f32 * COLUMN_WIDTH))
+        // Observe resolvedness before child prepaint can complete a provisional layout.
+        .child(measure)
         .child(
             div()
                 .flex_none()
@@ -141,7 +154,6 @@ pub(crate) fn row(
             .w(px((cells.len() - columns.end) as f32 * COLUMN_WIDTH))
             .h_0(),
     );
-    contents = contents.child(measure);
     div()
         .id(("table-row", index))
         .w_full()
