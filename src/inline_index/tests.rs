@@ -125,3 +125,32 @@ fn floor_boundary_matches_combined_source_and_normalized_literal_text() {
     let empty = InlineIndex::new(&document, &[]);
     assert_eq!(empty.floor_boundary(&document, &[], usize::MAX), 0);
 }
+#[test]
+fn word_scan_preserves_complete_styled_clusters_and_clamps_utf8_ranges() {
+    let cluster = "a".to_owned() + &"\u{301}".repeat(16_384);
+    let document = crate::markdown::parse(format!("before **{cluster}** after"));
+    let BlockKind::Paragraph(runs) = &document.blocks[0].kind else {
+        panic!("paragraph")
+    };
+    let index = InlineIndex::new(&document, runs);
+    assert_eq!(
+        index.word_end(&document, runs, 1030..index.len()),
+        7 + cluster.len() + 1
+    );
+    assert_eq!(
+        index.word_end(&document, runs, index.len() - 3..usize::MAX),
+        index.len()
+    );
+    assert_eq!(index.word_end(&document, runs, 1030..1031), 1030);
+    assert_eq!(
+        index.word_end(
+            &document,
+            runs,
+            std::ops::Range {
+                start: usize::MAX,
+                end: 0
+            }
+        ),
+        0
+    );
+}

@@ -53,6 +53,24 @@ impl InlineIndex {
         start + local
     }
 
+    /// Scans bounded source windows through the next whitespace or range end.
+    pub fn word_end(&self, document: &Document, runs: &[Inline], range: Range<usize>) -> usize {
+        let limit = self.floor_boundary(document, runs, range.end);
+        let mut cursor = self.floor_boundary(document, runs, range.start.min(limit));
+        while cursor < limit {
+            let end = self.floor_boundary(document, runs, cursor.saturating_add(8192).min(limit));
+            for run in self.slice(document, runs, cursor..end) {
+                for ch in run.text.as_str(&document.source).chars() {
+                    cursor += ch.len_utf8();
+                    if ch.is_whitespace() {
+                        return cursor;
+                    }
+                }
+            }
+        }
+        cursor
+    }
+
     /// Borrows source text and copies only normalized text within a visible range.
     ///
     /// Use the original immutable run sequence and semantic UTF-8 boundaries.
