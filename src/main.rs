@@ -1,5 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod code_cache;
+mod code_glyphs;
 mod code_view;
 mod content_paint;
 mod file;

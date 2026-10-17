@@ -5,6 +5,8 @@ use gpui::{
 use mira::document::BlockKind;
 
 use crate::{
+    code_cache::{CodeCache, MIN_UNICODE_BYTES, Source},
+    code_glyphs::CodeGlyphs,
     render_context::RenderContext,
     render_text::{self, TextKind},
     selection::Position,
@@ -32,8 +34,8 @@ impl IntoElement for CodeView {
 }
 
 impl Element for CodeView {
-    type RequestLayoutState = (Pixels, Pixels);
-    type PrepaintState = Vec<AnyElement>;
+    type RequestLayoutState = (Pixels, Pixels, Pixels);
+    type PrepaintState = (Vec<AnyElement>, Vec<CodeGlyphs>);
 
     fn id(&self) -> Option<ElementId> {
         Some(("code-lines", self.block).into())
@@ -67,12 +69,18 @@ impl Element for CodeView {
             ..Default::default()
         };
         if let Some(layout) = self.resources.loaded.code.get(&self.block) {
+            let fallback = f32::from(advance) * layout.max_columns().max(1) as f32;
+            let width =
+                CodeCache::width(&self.resources.codes, self.block, advance.into(), fallback);
             style.size = size(
-                (advance * layout.max_columns().max(1) as f32).into(),
+                px(width.max(1.)).into(),
                 (line_height * layout.line_count() as f32).into(),
             );
         }
-        (window.request_layout(style, [], cx), (advance, line_height))
+        (
+            window.request_layout(style, [], cx),
+            (advance, line_height, font_size),
+        )
     }
 
     fn prepaint(
@@ -84,13 +92,13 @@ impl Element for CodeView {
         window: &mut Window,
         cx: &mut App,
     ) -> Self::PrepaintState {
-        let (advance, line_height) = *metrics;
+        let (advance, line_height, font_size) = *metrics;
         let loaded = &self.resources.loaded;
         let Some(layout) = loaded.code.get(&self.block) else {
-            return Vec::new();
+            return (Vec::new(), Vec::new());
         };
         let BlockKind::Code { runs, .. } = &loaded.document.blocks[self.block].kind else {
-            return Vec::new();
+            return (Vec::new(), Vec::new());
         };
         let mask = window.content_mask().bounds;
         let first =
@@ -104,11 +112,34 @@ impl Element for CodeView {
         let last_column =
             ((mask.right() - bounds.left()).max(px(0.)) / advance).ceil() as usize + 32;
         let mut children = Vec::with_capacity(last.saturating_sub(first));
+        let mut unicode = Vec::new();
         for row in first..last {
             let Some(line) = layout.line(row) else {
                 continue;
             };
             if line.ascii && line.columns < first_column {
+                continue;
+            }
+            if !line.ascii && line.bytes.len() >= MIN_UNICODE_BYTES {
+                let source = Source {
+                    block: self.block,
+                    row,
+                };
+                let entry =
+                    CodeCache::request(&self.resources.codes, source, &line, font_size.into());
+                let target = f32::from((mask.right() - bounds.left()).max(px(0.))) + 256.;
+                CodeCache::demand(&self.resources.codes, &entry, target, window, cx);
+                unicode.push(CodeGlyphs::prepare(
+                    &self.resources,
+                    source,
+                    &entry.borrow(),
+                    Bounds::new(
+                        point(bounds.left(), bounds.top() + line_height * row as f32),
+                        size(bounds.size.width, line_height),
+                    ),
+                    font_size,
+                    window,
+                ));
                 continue;
             }
             let range = if line.ascii {
@@ -135,6 +166,9 @@ impl Element for CodeView {
                 self.resources.selection.clone(),
                 self.resources.owner,
             );
+            if !range.is_empty() {
+                child = self.resources.paint.wrap(child);
+            }
             child.prepaint_as_root(
                 point(
                     bounds.left() + advance * column as f32,
@@ -146,7 +180,7 @@ impl Element for CodeView {
             );
             children.push(child);
         }
-        children
+        (children, unicode)
     }
 
     fn paint(
@@ -159,11 +193,13 @@ impl Element for CodeView {
         window: &mut Window,
         cx: &mut App,
     ) {
-        if !children.is_empty() {
-            self.resources.paint.mark(window);
-        }
-        for child in children {
+        for child in &mut children.0 {
             child.paint(window, cx);
+        }
+        for row in &children.1 {
+            if row.paint(&self.resources, window) {
+                self.resources.paint.mark(window);
+            }
         }
     }
 }

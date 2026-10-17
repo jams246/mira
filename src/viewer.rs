@@ -4,6 +4,7 @@ mod navigation;
 use std::{rc::Rc, sync::Arc};
 
 use crate::{
+    code_cache::{self, CodeCache},
     content_paint::ContentPaint,
     file::LoadedDocument,
     flow_cache::{self, FlowCache},
@@ -56,6 +57,7 @@ pub(crate) struct Viewer {
     table_scrolls: TableScrolls,
     images: Option<CacheHandle>,
     texts: Option<text_cache::CacheHandle>,
+    codes: Option<code_cache::CacheHandle>,
     flows: Option<flow_cache::CacheHandle>,
 }
 
@@ -81,6 +83,7 @@ impl Viewer {
             table_scrolls: TableScrolls::default(),
             images: None,
             texts: None,
+            codes: None,
             flows: None,
         }
     }
@@ -175,6 +178,9 @@ impl Render for Viewer {
             let texts = self
                 .texts
                 .get_or_insert_with(|| TextCache::new(Arc::clone(loaded), window.current_view()));
+            let codes = self
+                .codes
+                .get_or_insert_with(|| CodeCache::new(Arc::clone(loaded), window.current_view()));
             let flows = self
                 .flows
                 .get_or_insert_with(|| FlowCache::new(Arc::clone(loaded), window.current_view()));
@@ -203,6 +209,7 @@ impl Render for Viewer {
                         tables: Rc::clone(&self.table_scrolls),
                         images: Rc::clone(images),
                         texts: Rc::clone(texts),
+                        codes: Rc::clone(codes),
                         flows: Rc::clone(flows),
                         cell: None,
                         paint: self.content_paint.clone(),
