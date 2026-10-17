@@ -35,6 +35,7 @@ impl Viewer {
                     Ok(loaded) => {
                         viewer.timing.duration("file_read", loaded.read_time);
                         viewer.timing.duration("parse_model", loaded.parse_time);
+                        viewer.timing.duration("code_index", loaded.code_index_time);
                         viewer.timing.mark("document_loaded");
                         viewer.message = format!(
                             "Loaded {} blocks from {}.",

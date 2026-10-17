@@ -2,6 +2,7 @@ use gpui::{AnyElement, App, IntoElement, Window, div, prelude::*, px, relative, 
 use mira::document::{BlockKind, ContextKind, Document};
 
 use crate::{
+    code_view::CodeView,
     render_context::RenderContext,
     render_image::{self, ImageContent},
     render_inline, render_table,
@@ -81,6 +82,19 @@ pub(crate) fn block(
             content = content.my_3().h(px(1.)).bg(rgb(0xd8d8d8));
         }
         BlockKind::Code { runs, .. } => {
+            let text = if resources.loaded.code.contains_key(&index) {
+                CodeView::new(index, &resources).into_any_element()
+            } else {
+                render_inline::content(
+                    document,
+                    position,
+                    runs,
+                    TextKind::Code.into(),
+                    &resources,
+                    window,
+                    cx,
+                )
+            };
             content = content.child(
                 div()
                     .id(("code", index))
@@ -91,15 +105,7 @@ pub(crate) fn block(
                     .bg(rgb(0xeeeeee))
                     .rounded_md()
                     .text_size(px(14.))
-                    .child(render_inline::content(
-                        document,
-                        position,
-                        runs,
-                        TextKind::Code.into(),
-                        &resources,
-                        window,
-                        cx,
-                    )),
+                    .child(text),
             );
         }
         BlockKind::TableRow { table, .. } => {

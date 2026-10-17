@@ -125,6 +125,7 @@ impl Viewer {
 impl Render for Viewer {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let root = div()
+            .relative()
             .key_context("Mira")
             .track_focus(&self.focus)
             .on_action(cx.listener(Self::open))
@@ -153,11 +154,14 @@ impl Render for Viewer {
                 .images
                 .get_or_insert_with(|| ImageCache::new(Arc::clone(loaded), window.current_view()));
             images.borrow_mut().begin_frame();
-            if !self.content_marked {
+            let paint_marker = if !self.content_marked && !loaded.document.blocks.is_empty() {
                 self.content_marked = true;
                 let timing = self.timing;
                 window.on_next_frame(move |_, _| timing.mark("first_content_callback"));
-            }
+                self.timing.paint_marker("first_content_paint")
+            } else {
+                None
+            };
             let activate_link = Rc::new(cx.processor(Self::activate_link));
             return root
                 .when_some(self.link_error.clone(), |root, message| {
@@ -170,6 +174,7 @@ impl Render for Viewer {
                     Arc::clone(loaded),
                     self.list.clone(),
                     RenderContext {
+                        loaded: Arc::clone(loaded),
                         links: activate_link,
                         selection: Rc::clone(&self.selection),
                         tables: Rc::clone(&self.table_scrolls),
@@ -177,7 +182,8 @@ impl Render for Viewer {
                         owner: window.current_view(),
                         width: (f32::from(window.viewport_size().width) - 64.).max(1.),
                     },
-                ));
+                ))
+                .when_some(paint_marker, |root, marker| root.child(marker));
         }
         root.justify_center()
             .items_center()
