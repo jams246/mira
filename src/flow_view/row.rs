@@ -1,6 +1,6 @@
 use std::{ops::Range, rc::Rc};
 
-use gpui::{AnyElement, App, IntoElement, TextAlign, Window, div, prelude::*};
+use gpui::{AnyElement, App, IntoElement, StyledText, TextAlign, Window, div, prelude::*};
 use mira::flow_index::{FlowIndex, PieceKind};
 
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
     },
     render_image::{self, ImageContent},
     render_inline,
-    render_text::TextFormat,
+    render_text::{self, TextFormat, TextKind},
     selection::Position,
     text_cache::Source,
     wrapped_text::WrappedText,
@@ -72,6 +72,23 @@ pub(crate) fn build(
                         &resources,
                         index.inline_index(),
                     ))
+                    .into_any_element()
+            }
+            PieceKind::Text if measuring => {
+                let prepared = render_text::prepare(
+                    document,
+                    &index.slice(document, runs, piece.range.clone()),
+                    input.format.kind,
+                    resources.palette,
+                );
+                div()
+                    .flex_none()
+                    .max_w_full()
+                    .min_w_0()
+                    .when(input.format.kind == TextKind::Code, |text| {
+                        text.whitespace_nowrap()
+                    })
+                    .child(StyledText::new(prepared.text).with_runs(prepared.runs))
                     .into_any_element()
             }
             PieceKind::Text => render_inline::text(
