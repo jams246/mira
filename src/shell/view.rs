@@ -152,7 +152,7 @@ impl Render for Shell {
             .on_drop::<ExternalPaths>(cx.listener(|shell, paths: &ExternalPaths, window, cx| {
                 shell.open_paths(paths.paths().to_vec(), window, cx);
             }))
-            .child(self.toolbar(palette, cx))
+            .child(self.toolbar(palette, window, cx))
             .when(!self.tabs.is_empty(), |root| {
                 root.child(self.tab_strip(palette, cx))
             })

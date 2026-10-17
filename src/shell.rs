@@ -5,6 +5,7 @@ mod opening;
 mod tabs;
 mod toolbar;
 mod view;
+mod zoom;
 
 use std::{collections::VecDeque, path::PathBuf};
 
@@ -23,6 +24,7 @@ actions!(
 
 pub(crate) fn bind_keys(cx: &mut App) {
     actions::bind_keys(cx);
+    zoom::bind_keys(cx);
     cx.bind_keys([
         KeyBinding::new("ctrl-o", crate::viewer::Open, Some("MiraWindow")),
         KeyBinding::new("ctrl-tab", NextTab, Some("MiraWindow")),
@@ -53,6 +55,7 @@ pub(crate) struct Shell {
     opening_task: Option<Task<()>>,
     focus: FocusHandle,
     strip_scroll: ScrollHandle,
+    zoom: zoom::ZoomSelect,
     timing: Timing,
     message: Option<String>,
     _appearance: Subscription,
@@ -70,6 +73,7 @@ impl Shell {
             opening_task: None,
             focus,
             strip_scroll: ScrollHandle::new(),
+            zoom: zoom::ZoomSelect::new(window, cx),
             timing,
             message: None,
             _appearance: appearance,
@@ -106,6 +110,7 @@ impl Shell {
     }
 
     fn select(&mut self, id: u64, window: &mut Window, cx: &mut Context<Self>) {
+        self.zoom.menu = None;
         if self.order.active != Some(id) {
             if let Some(reader) = self.active() {
                 reader.update(cx, |reader, cx| reader.deactivate(window, cx));

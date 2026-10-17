@@ -11,6 +11,7 @@ impl Shell {
     pub(super) fn toolbar(
         &self,
         palette: Palette,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> gpui::Stateful<gpui::Div> {
         let active = self.active().cloned();
@@ -92,16 +93,7 @@ impl Shell {
                 loaded && zoom > 50,
                 Viewer::zoom_out,
             ))
-            .child(
-                reader_button(
-                    "zoom-reset",
-                    format!("{zoom}%"),
-                    "Reset zoom (Ctrl+0)",
-                    loaded,
-                    Viewer::zoom_reset,
-                )
-                .accessible_name(format!("Reset zoom, {zoom}% (Ctrl+0)")),
-            )
+            .child(self.zoom_select(loaded, zoom, palette, window, cx))
             .child(reader_button(
                 "zoom-in",
                 "+".into(),

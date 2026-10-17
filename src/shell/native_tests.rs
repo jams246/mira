@@ -1,6 +1,7 @@
 mod drop;
 mod lifecycle;
 mod navigation;
+mod zoom;
 
 use std::sync::{Arc, atomic::Ordering};
 
@@ -174,6 +175,7 @@ pub(crate) async fn run(cx: &mut AsyncApp) {
         .unwrap();
     drop::run(window, cx).await;
     navigation::run(window, cx).await;
+    zoom::run(window, cx).await;
     lifecycle::run(window, cx);
     window
         .update(cx, |_, window, _| window.remove_window())

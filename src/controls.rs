@@ -50,7 +50,9 @@ pub(crate) fn button(
                 .hover(move |style| style.bg(palette.panel))
                 .focus(move |style| style.border_color(palette.link))
         })
-        .tooltip(move |_, cx| tip(description.clone(), palette, cx))
+        .when(!description.is_empty(), |button| {
+            button.tooltip(move |_, cx| tip(description.clone(), palette, cx))
+        })
         .on_click(move |event, window, cx| {
             cx.stop_propagation();
             if enabled && matches!(event, ClickEvent::Mouse(_)) {

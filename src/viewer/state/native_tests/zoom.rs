@@ -42,8 +42,8 @@ pub(super) async fn run(window: WindowHandle<Viewer>, cx: &mut AsyncApp) {
             }]);
             reader.find.highlights.borrow_mut().matches = Arc::clone(&matches);
             reader.find.highlights.borrow_mut().active = Some(0);
-            reader.zoom_in(window, cx);
-            assert_eq!(reader.zoom_percent(), 110);
+            reader.set_zoom(150, window, cx);
+            assert_eq!(reader.zoom_percent(), 150);
             assert!(reader.texts.is_none() && reader.codes.is_none() && reader.flows.is_none());
             assert_eq!(reader.table_scrolls.borrow_mut().minimum(0, window), px(0.));
             assert!(Arc::ptr_eq(reader.loaded.as_ref().unwrap(), &loaded));
@@ -62,6 +62,10 @@ pub(super) async fn run(window: WindowHandle<Viewer>, cx: &mut AsyncApp) {
             for _ in 0..30 {
                 reader.zoom_out(window, cx);
             }
+            assert_eq!(reader.zoom_percent(), 50);
+            reader.set_zoom(u16::MAX, window, cx);
+            assert_eq!(reader.zoom_percent(), 200);
+            reader.set_zoom(0, window, cx);
             assert_eq!(reader.zoom_percent(), 50);
             reader.zoom_reset(window, cx);
             assert_eq!(reader.zoom_percent(), 100);

@@ -177,7 +177,8 @@ impl Viewer {
     pub(crate) fn zoom_reset(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.set_zoom(100, window, cx);
     }
-    fn set_zoom(&mut self, zoom: u16, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn set_zoom(&mut self, zoom: u16, window: &mut Window, cx: &mut Context<Self>) {
+        let zoom = zoom.clamp(50, 200);
         if self.zoom == zoom || self.loaded.is_none() {
             return;
         }
