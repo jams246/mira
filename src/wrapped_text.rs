@@ -158,9 +158,7 @@ impl Element for WrappedText {
                 },
                 &slice,
                 self.format,
-                Rc::clone(&self.resources.links),
-                Rc::clone(&self.resources.selection),
-                self.resources.owner,
+                &self.resources,
             );
             let mut child = div()
                 .id(("text-chunk", chunk.row))

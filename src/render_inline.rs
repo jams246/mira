@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use gpui::{AnyElement, App, IntoElement, Window};
 use mira::document::{Document, Inline};
 use mira::flow_index::FlowIndex;
@@ -71,13 +69,7 @@ pub(crate) fn text(
     resources: &RenderContext,
 ) -> AnyElement {
     resources.paint.wrap(render_text::text(
-        document,
-        position,
-        runs,
-        format,
-        Rc::clone(&resources.links),
-        Rc::clone(&resources.selection),
-        resources.owner,
+        document, position, runs, format, resources,
     ))
 }
 

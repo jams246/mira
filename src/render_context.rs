@@ -2,13 +2,14 @@ use gpui::EntityId;
 use std::sync::Arc;
 
 use crate::{
-    code_cache, content_paint::ContentPaint, file::LoadedDocument, flow_cache,
+    appearance::Palette, code_cache, content_paint::ContentPaint, file::LoadedDocument, flow_cache,
     image_cache::CacheHandle, render_table::TableScrolls, render_text::LinkHandler,
     selection::SelectionHandle, text_cache,
 };
 
 #[derive(Clone)]
 pub(crate) struct RenderContext {
+    pub palette: Palette,
     pub loaded: Arc<LoadedDocument>,
     pub links: LinkHandler,
     pub selection: SelectionHandle,

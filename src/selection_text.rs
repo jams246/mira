@@ -2,10 +2,11 @@ use std::{ops::Range, rc::Rc};
 
 use gpui::{
     AnyElement, DispatchPhase, EntityId, IntoElement, MouseButton, MouseMoveEvent, SharedString,
-    TextAlign, TextLayout, TextRun, canvas, div, prelude::*, rgb,
+    TextAlign, TextLayout, TextRun, canvas, div, prelude::*,
 };
 
 use crate::{
+    appearance::Palette,
     render_text::LinkHandler,
     selection::{Position, SelectionHandle, boundary},
     text_hit_test,
@@ -147,7 +148,11 @@ pub(crate) fn wrap(
         .into_any_element()
 }
 
-pub(crate) fn highlight(runs: Vec<TextRun>, selection: Option<Range<usize>>) -> Vec<TextRun> {
+pub(crate) fn highlight(
+    runs: Vec<TextRun>,
+    selection: Option<Range<usize>>,
+    palette: Palette,
+) -> Vec<TextRun> {
     let Some(selection) = selection else {
         return runs;
     };
@@ -169,7 +174,8 @@ pub(crate) fn highlight(runs: Vec<TextRun>, selection: Option<Range<usize>>) -> 
             let mut part = run.clone();
             part.len = pair[1] - pair[0];
             if selection.contains(&pair[0]) {
-                part.background_color = Some(rgb(0xb6d7ff).into());
+                part.background_color = Some(palette.selection);
+                part.color = palette.text;
             }
             output.push(part);
         }
@@ -191,12 +197,12 @@ mod tests {
         let run = TextRun {
             len: 8,
             font,
-            color: rgb(0x242424).into(),
+            color: Palette::light().text,
             background_color: None,
             underline: None,
             strikethrough: None,
         };
-        let selected = highlight(vec![run.clone()], Some(2..6));
+        let selected = highlight(vec![run.clone()], Some(2..6), Palette::light());
         assert_eq!(
             selected.iter().map(|run| run.len).collect::<Vec<_>>(),
             vec![2, 4, 2]
@@ -204,5 +210,29 @@ mod tests {
         assert!(selected[1].background_color.is_some());
         assert_eq!(selected[1].font, run.font);
         assert!(selected[0].background_color.is_none());
+    }
+
+    #[test]
+    fn appearance_changes_preserve_selected_utf8_bytes_and_link_styles() {
+        let text = "a東京😀z";
+        for palette in [Palette::light(), Palette::dark()] {
+            let run = TextRun {
+                len: text.len(),
+                font: font("Segoe UI"),
+                color: palette.link,
+                background_color: None,
+                underline: Some(gpui::UnderlineStyle::default()),
+                strikethrough: None,
+            };
+            let runs = highlight(vec![run.clone()], Some(1..11), palette);
+            assert_eq!(
+                runs.iter().map(|run| run.len).collect::<Vec<_>>(),
+                [1, 10, 1]
+            );
+            assert_eq!(&text[1..1 + runs[1].len], "東京😀");
+            assert_eq!(runs[1].color, palette.text);
+            assert_eq!(runs[1].background_color, Some(palette.selection));
+            assert_eq!(runs[1].underline, run.underline);
+        }
     }
 }

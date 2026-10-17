@@ -1,9 +1,11 @@
+mod empty;
 mod loading;
 mod navigation;
 
 use std::{rc::Rc, sync::Arc};
 
 use crate::{
+    appearance::Palette,
     code_cache::{self, CodeCache},
     content_paint::ContentPaint,
     file::LoadedDocument,
@@ -17,8 +19,8 @@ use crate::{
     timing::Timing,
 };
 use gpui::{
-    App, Context, FocusHandle, KeyBinding, ListAlignment, ListOffset, ListState, MouseButton, Task,
-    Window, actions, div, prelude::*, px, rgb,
+    App, Context, FocusHandle, KeyBinding, ListAlignment, ListOffset, ListState, MouseButton,
+    Subscription, Task, Window, actions, div, prelude::*, px,
 };
 use mira::{
     document::BlockKind,
@@ -47,6 +49,7 @@ pub(crate) struct Viewer {
     generation: u64,
     load_task: Option<Task<()>>,
     focus: FocusHandle,
+    _appearance: Subscription,
     timing: Timing,
     list: ListState,
     follow_bottom: bool,
@@ -65,6 +68,7 @@ impl Viewer {
     pub(crate) fn new(window: &mut Window, cx: &mut Context<Self>, timing: Timing) -> Self {
         let focus = cx.focus_handle();
         window.focus(&focus);
+        let appearance = cx.observe_window_appearance(window, |_, _, cx| cx.notify());
         let list = ListState::new(0, ListAlignment::Top, px(500.));
         list.set_scroll_handler(cx.listener(|viewer, _, _, _| viewer.follow_bottom = false));
         Self {
@@ -73,6 +77,7 @@ impl Viewer {
             generation: 0,
             load_task: None,
             focus,
+            _appearance: appearance,
             timing,
             list,
             follow_bottom: false,
@@ -139,6 +144,7 @@ impl Viewer {
 
 impl Render for Viewer {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let palette = Palette::for_window(window);
         if self.follow_bottom {
             self.list.scroll_to(ListOffset {
                 item_ix: self.list.item_count(),
@@ -167,8 +173,8 @@ impl Render for Viewer {
             .size_full()
             .flex()
             .flex_col()
-            .bg(rgb(0xfafafa))
-            .text_color(rgb(0x242424))
+            .bg(palette.background)
+            .text_color(palette.text)
             .font_family("Segoe UI");
         if let Some(loaded) = &self.loaded {
             let images = self
@@ -187,7 +193,7 @@ impl Render for Viewer {
             let activate_link = Rc::new(cx.processor(Self::activate_link));
             return root
                 .when_some(self.link_error.clone(), |root, message| {
-                    root.child(div().p_3().text_color(rgb(0xa02020)).child(message))
+                    root.child(div().p_3().text_color(palette.error).child(message))
                 })
                 .when(loaded.document.blocks.is_empty(), |root| {
                     root.child(
@@ -214,33 +220,11 @@ impl Render for Viewer {
                         cell: None,
                         paint: self.content_paint.clone(),
                         owner: window.current_view(),
+                        palette,
                         width: (f32::from(window.viewport_size().width) - 64.).max(1.),
                     },
                 ));
         }
-        root.justify_center()
-            .items_center()
-            .p_8()
-            .gap_3()
-            .child(div().text_3xl().child("MIRA"))
-            .child(if self.message.starts_with("Cannot open ") {
-                self.content_paint
-                    .wrap(div().child(self.message.clone()).into_any_element())
-            } else {
-                div().child(self.message.clone()).into_any_element()
-            })
-            .child(
-                div()
-                    .id("open")
-                    .cursor_pointer()
-                    .px_4()
-                    .py_2()
-                    .rounded_md()
-                    .border_1()
-                    .border_color(rgb(0xcccccc))
-                    .hover(|style| style.bg(rgb(0xeeeeee)))
-                    .on_click(cx.listener(|viewer, _, window, cx| viewer.open(&Open, window, cx)))
-                    .child("Open Markdown (Ctrl+O)"),
-            )
+        self.empty(root, palette, window, cx)
     }
 }

@@ -162,9 +162,7 @@ impl Element for CodeView {
                 },
                 &slice,
                 TextKind::Code.into(),
-                self.resources.links.clone(),
-                self.resources.selection.clone(),
-                self.resources.owner,
+                &self.resources,
             );
             if !range.is_empty() {
                 child = self.resources.paint.wrap(child);

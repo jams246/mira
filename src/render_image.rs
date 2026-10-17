@@ -1,6 +1,6 @@
 use std::{rc::Rc, sync::Arc};
 
-use gpui::{AnyElement, App, IntoElement, MouseButton, Window, div, img, prelude::*, px, rgb};
+use gpui::{AnyElement, App, IntoElement, MouseButton, Window, div, img, prelude::*, px};
 use mira::document::{Document, Inline};
 use mira::inline_index::InlineIndex;
 
@@ -148,15 +148,7 @@ fn placeholder(
             None => WrappedText::new(position, TextKind::Body.into(), resources).into_any_element(),
         }
     } else {
-        render_text::text(
-            document,
-            position,
-            alt,
-            TextKind::Body.into(),
-            Rc::clone(&resources.links),
-            Rc::clone(&resources.selection),
-            resources.owner,
-        )
+        render_text::text(document, position, alt, TextKind::Body.into(), resources)
     };
     let text = if !large && len > 0 {
         resources.paint.wrap(text)
@@ -165,7 +157,11 @@ fn placeholder(
     };
     let caption = div()
         .text_sm()
-        .text_color(rgb(0x666666))
+        .text_color(if permanent {
+            resources.palette.error
+        } else {
+            resources.palette.muted
+        })
         .child(message)
         .into_any_element();
     div()

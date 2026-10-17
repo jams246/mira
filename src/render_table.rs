@@ -1,6 +1,6 @@
 use std::{ops::Range, rc::Rc};
 
-use gpui::{AnyElement, App, IntoElement, TextAlign, Window, canvas, div, prelude::*, px, rgb};
+use gpui::{AnyElement, App, IntoElement, TextAlign, Window, canvas, div, prelude::*, px};
 use mira::document::{BlockKind, Document};
 use pulldown_cmark::Alignment;
 
@@ -142,9 +142,11 @@ pub(crate) fn row(
                 .text_align(align)
                 .border_b_1()
                 .border_r_1()
-                .border_color(rgb(0xd0d4d8))
+                .border_color(resources.palette.border)
                 .when(column == 0, |cell| cell.border_l_1())
-                .when(*header, |cell| cell.border_t_1().bg(rgb(0xeeeeee)))
+                .when(*header, |cell| {
+                    cell.border_t_1().bg(resources.palette.panel)
+                })
                 .child(text),
         );
     }

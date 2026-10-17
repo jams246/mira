@@ -1,4 +1,4 @@
-use gpui::{AnyElement, App, IntoElement, Window, div, prelude::*, px, relative, rgb};
+use gpui::{AnyElement, App, IntoElement, Window, div, prelude::*, px, relative};
 use mira::document::{BlockKind, ContextKind, Document};
 
 use crate::{
@@ -80,9 +80,13 @@ pub(crate) fn block(
         }
         BlockKind::Rule => {
             content = content.child(
-                resources
-                    .paint
-                    .wrap(div().my_3().h(px(1.)).bg(rgb(0xd8d8d8)).into_any_element()),
+                resources.paint.wrap(
+                    div()
+                        .my_3()
+                        .h(px(1.))
+                        .bg(resources.palette.rule)
+                        .into_any_element(),
+                ),
             );
         }
         BlockKind::Code { runs, .. } => {
@@ -110,7 +114,7 @@ pub(crate) fn block(
                         scroller
                     })
                     .p_3()
-                    .bg(rgb(0xeeeeee))
+                    .bg(resources.palette.panel)
                     .rounded_md()
                     .text_size(px(14.))
                     .child(text),
@@ -147,7 +151,7 @@ pub(crate) fn block(
                 .w_full()
                 .min_w_0()
                 .border_l_2()
-                .border_color(rgb(0xc4c8cc))
+                .border_color(resources.palette.quote)
                 .pl(px(gutter.min(16.)))
                 .child(content),
             ContextKind::ListItem { number, checked } => {

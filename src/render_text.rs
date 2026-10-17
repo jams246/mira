@@ -1,15 +1,14 @@
 use std::{ops::Range, rc::Rc};
 
 use gpui::{
-    AnyElement, App, EntityId, FontStyle, FontWeight, SharedString, StrikethroughStyle, TextAlign,
-    TextRun, UnderlineStyle, Window, font, px, rgb,
+    AnyElement, App, FontStyle, FontWeight, SharedString, StrikethroughStyle, TextAlign, TextRun,
+    UnderlineStyle, Window, font, px,
 };
 use mira::document::{Document, Inline};
 
 use crate::{
-    selection::{Position, SelectionHandle},
-    selection_text, text_background,
-    text_map::TextMap,
+    appearance::Palette, render_context::RenderContext, selection::Position, selection_text,
+    text_background, text_map::TextMap,
 };
 
 pub(crate) type LinkHandler = Rc<dyn Fn(usize, &mut Window, &mut App)>;
@@ -43,9 +42,7 @@ pub(crate) fn text(
     position: Position,
     inlines: &[Inline],
     format: TextFormat,
-    activate_link: LinkHandler,
-    selection: SelectionHandle,
-    owner: EntityId,
+    resources: &RenderContext,
 ) -> AnyElement {
     let PreparedText {
         text,
@@ -54,12 +51,13 @@ pub(crate) fn text(
         destinations,
         mapping,
         source_len,
-    } = prepare(document, inlines, format.kind);
-    let selected = selection
+    } = prepare(document, inlines, format.kind, resources.palette);
+    let selected = resources
+        .selection
         .borrow()
         .range_at(position, source_len)
         .map(|range| mapping.to_display(range.start)..mapping.to_display(range.end));
-    let runs = selection_text::highlight(runs, selected);
+    let runs = selection_text::highlight(runs, selected, resources.palette);
     let text: SharedString = text.into();
     let (styled, layout) = text_background::text(text.clone(), runs, format.align);
     selection_text::wrap(
@@ -68,13 +66,13 @@ pub(crate) fn text(
         styled,
         selection_text::Interaction {
             position,
-            selection,
-            owner,
+            selection: Rc::clone(&resources.selection),
+            owner: resources.owner,
             mapping,
             align: format.align,
             inline: format.inline,
             links: links.into_iter().zip(destinations).collect(),
-            activate_link,
+            activate_link: Rc::clone(&resources.links),
         },
     )
 }
@@ -88,7 +86,12 @@ pub(crate) struct PreparedText {
     source_len: usize,
 }
 
-pub(crate) fn prepare(document: &Document, inlines: &[Inline], kind: TextKind) -> PreparedText {
+pub(crate) fn prepare(
+    document: &Document,
+    inlines: &[Inline],
+    kind: TextKind,
+    palette: Palette,
+) -> PreparedText {
     let mut text = String::new();
     let mut runs = Vec::with_capacity(inlines.len());
     let mut links = Vec::new();
@@ -110,13 +113,12 @@ pub(crate) fn prepare(document: &Document, inlines: &[Inline], kind: TextKind) -
         runs.push(TextRun {
             len: text.len() - start,
             font,
-            color: rgb(if inline.link.is_some() {
-                0x0969da
+            color: if inline.link.is_some() {
+                palette.link
             } else {
-                0x242424
-            })
-            .into(),
-            background_color: inline.style.code.then(|| rgb(0xeeeeee).into()),
+                palette.text
+            },
+            background_color: inline.style.code.then_some(palette.panel),
             underline: inline.link.map(|_| UnderlineStyle {
                 thickness: px(1.),
                 color: None,
@@ -168,7 +170,7 @@ mod tests {
         let BlockKind::Paragraph(inlines) = &document.blocks[0].kind else {
             panic!("paragraph");
         };
-        let prepared = prepare(&document, inlines, TextKind::Body);
+        let prepared = prepare(&document, inlines, TextKind::Body, Palette::light());
         assert_eq!(prepared.text, "Grüße and 東京 gone");
         assert_eq!(
             prepared.runs.iter().map(|run| run.len).sum::<usize>(),
@@ -191,7 +193,7 @@ mod tests {
         let BlockKind::Code { runs, .. } = &document.blocks[0].kind else {
             panic!("code");
         };
-        let prepared = prepare(&document, runs, TextKind::Code);
+        let prepared = prepare(&document, runs, TextKind::Code, Palette::light());
         assert_eq!(prepared.text, "let x = 1;\n\n      x\n");
         assert_eq!(prepared.source_len, "let x = 1;\n\n\t  x\n".len());
         assert_eq!(

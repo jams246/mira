@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use gpui::{WindowTextSystem, px};
 
 use super::*;
-use crate::render_text;
+use crate::{appearance::Palette, render_text};
 
 pub(super) struct Input {
     pub index: Arc<InlineIndex>,
@@ -63,7 +63,8 @@ pub(super) fn batch(
             let slice = result
                 .index
                 .slice(document, runs, result.context_start..end);
-            let prepared = render_text::prepare(document, &slice, input.config.kind);
+            let prepared =
+                render_text::prepare(document, &slice, input.config.kind, Palette::light());
             let lines = system
                 .shape_text(
                     prepared.text.into(),

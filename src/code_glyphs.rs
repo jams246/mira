@@ -2,7 +2,7 @@ mod interaction;
 
 use std::rc::Rc;
 
-use gpui::{Bounds, Hitbox, Pixels, Point, ShapedLine, Window, fill, point, px, rgb, size};
+use gpui::{Bounds, Hitbox, Pixels, Point, ShapedLine, Window, fill, point, px, size};
 
 use crate::{
     code_cache::{self, Chunk, Entry, Source},
@@ -94,13 +94,17 @@ impl CodeGlyphs {
                         run.font_id,
                         glyph.id,
                         self.font_size,
-                        window.text_style().color,
+                        if self.error {
+                            resources.palette.error
+                        } else {
+                            resources.palette.muted
+                        },
                     );
                 }
             }
         }
         interaction::register(self, resources, window);
-        let color = window.text_style().color;
+        let color = resources.palette.text;
         for piece in self.pieces.iter() {
             let chunk = &piece.chunk;
             let origin = point(
@@ -128,7 +132,7 @@ impl CodeGlyphs {
                             point(origin.x + x, origin.y),
                             size((end - x).max(px(0.)), self.bounds.size.height),
                         ),
-                        rgb(0xb6d7ff),
+                        resources.palette.selection,
                     ));
                 }
             }
