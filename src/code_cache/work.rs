@@ -130,7 +130,8 @@ fn advance(
             }
         }
         timing.mark("code_checkpoint_step");
-        if batch.error.is_some() || start.elapsed() >= Duration::from_millis(4) {
+        // Background batches amortize frame handoffs without enlarging native shaping chunks.
+        if batch.error.is_some() || start.elapsed() >= Duration::from_millis(16) {
             break;
         }
     }

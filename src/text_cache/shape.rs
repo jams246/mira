@@ -143,7 +143,8 @@ pub(super) fn batch(
         if final_chunk && result.intrinsic != IntrinsicWidth::Full {
             result.intrinsic = IntrinsicWidth::Exact(result.natural_width);
         }
-        if start.elapsed() >= Duration::from_millis(4) || result.chunks.len() == 64 {
+        // Background batches amortize frame handoffs without enlarging native shaping chunks.
+        if start.elapsed() >= Duration::from_millis(16) || result.chunks.len() == 64 {
             break;
         }
     }
