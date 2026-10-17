@@ -1,5 +1,6 @@
 mod coarse;
 mod horizontal;
+pub(crate) mod prepaint;
 #[cfg(test)]
 mod tests;
 

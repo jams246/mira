@@ -68,6 +68,19 @@ impl CodeGlyphs {
                 }
             })
             .collect();
+        for piece in &pieces {
+            crate::reveal::prepaint::code(
+                resources,
+                crate::selection::Position {
+                    block: source.block,
+                    byte: piece.chunk.window.start,
+                },
+                &piece.chunk.core,
+                piece.chunk.window.start + piece.mapping.to_source(piece.line.text.len()),
+                bounds.top(),
+                window,
+            );
+        }
         let status = pieces.is_empty().then(|| {
             code_cache::native(
                 window.text_system(),

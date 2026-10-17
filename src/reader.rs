@@ -11,10 +11,10 @@ pub(crate) fn viewport(
 ) -> impl IntoElement {
     let reveal = resources.reveal.clone();
     let viewport = canvas(
-        |_, _, _| (),
-        move |bounds, (), _, _| {
+        move |bounds, _, _| {
             reveal.borrow_mut().begin_frame(bounds);
         },
+        |_, (), _, _| {},
     )
     .absolute()
     .inset_0()

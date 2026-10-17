@@ -57,8 +57,18 @@ pub(crate) fn wrap(
     let capture_layout = layout.clone();
     let capture_mapping = mapping.clone();
     let capture = canvas(
-        |_, _, _| (),
-        move |_, (), window, cx| {
+        move |_, window, _| {
+            crate::reveal::prepaint::text(
+                &resources,
+                position,
+                source_len,
+                &capture_mapping,
+                &capture_layout,
+                window,
+            );
+            (resources, capture_mapping, capture_layout)
+        },
+        move |_, (resources, capture_mapping, capture_layout), window, cx| {
             crate::reveal::observe(
                 &resources,
                 position,
@@ -156,8 +166,8 @@ pub(crate) fn wrap(
                 activate_link(target, window, cx);
             }
         })
-        .child(capture)
         .child(child)
+        .child(capture)
         .into_any_element()
 }
 
