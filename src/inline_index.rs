@@ -32,6 +32,27 @@ impl InlineIndex {
         self.len() == 0
     }
 
+    /// Clamps a byte offset to the preceding semantic UTF-8 character boundary.
+    ///
+    /// Use the original immutable document and run sequence indexed by this value.
+    pub fn floor_boundary(&self, document: &Document, runs: &[Inline], byte: usize) -> usize {
+        let byte = byte.min(self.len());
+        let index = self
+            .starts
+            .partition_point(|start| *start <= byte)
+            .saturating_sub(1);
+        let Some(run) = runs.get(index) else {
+            return byte;
+        };
+        let start = self.starts[index];
+        let text = run.text.as_str(&document.source);
+        let mut local = byte - start;
+        while !text.is_char_boundary(local) {
+            local -= 1;
+        }
+        start + local
+    }
+
     /// Borrows source text and copies only normalized text within a visible range.
     ///
     /// Use the original immutable run sequence and semantic UTF-8 boundaries.

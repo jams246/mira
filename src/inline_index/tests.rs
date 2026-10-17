@@ -97,3 +97,31 @@ fn empty_reversed_outside_and_invalid_utf8_ranges_do_not_create_invalid_text() {
     assert!(empty.is_empty());
     assert_eq!(empty.len(), 0);
 }
+
+#[test]
+fn floor_boundary_matches_combined_source_and_normalized_literal_text() {
+    let document = markdown::parse("**é** &amp; `a\n東京` 😀".into());
+    let BlockKind::Paragraph(runs) = &document.blocks[0].kind else {
+        panic!("Expected paragraph");
+    };
+    assert!(runs.iter().any(|run| matches!(run.text, Text::Source(_))));
+    assert!(runs.iter().any(|run| matches!(run.text, Text::Literal(_))));
+    let text = runs
+        .iter()
+        .map(|run| run.text.as_str(&document.source))
+        .collect::<String>();
+    let index = InlineIndex::new(&document, runs);
+    for byte in 0..text.len() + 4 {
+        let mut expected = byte.min(text.len());
+        while !text.is_char_boundary(expected) {
+            expected -= 1;
+        }
+        assert_eq!(index.floor_boundary(&document, runs, byte), expected);
+    }
+    assert_eq!(
+        index.floor_boundary(&document, runs, usize::MAX),
+        text.len()
+    );
+    let empty = InlineIndex::new(&document, &[]);
+    assert_eq!(empty.floor_boundary(&document, &[], usize::MAX), 0);
+}
