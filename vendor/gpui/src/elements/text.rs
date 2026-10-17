@@ -377,8 +377,9 @@ impl TextLayout {
                     return text_layout.size.unwrap();
                 }
 
-                let mut line_wrapper = cx.text_system().line_wrapper(text_style.font(), font_size);
                 let text = if let Some(truncate_width) = truncate_width {
+                    let mut line_wrapper =
+                        cx.text_system().line_wrapper(text_style.font(), font_size);
                     line_wrapper.truncate_line(
                         text.clone(),
                         truncate_width,
