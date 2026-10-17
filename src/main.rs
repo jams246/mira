@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod code_view;
+mod content_paint;
 mod file;
 mod image_cache;
 mod inline_flow;
@@ -14,10 +15,12 @@ mod render_text;
 mod selection;
 mod selection_text;
 mod text_background;
+mod text_cache;
 mod text_hit_test;
 mod text_map;
 mod timing;
 mod viewer;
+mod wrapped_text;
 
 use gpui::{App, AppContext, Application, Bounds, WindowBounds, WindowOptions, px, size};
 use timing::Timing;

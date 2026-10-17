@@ -79,16 +79,16 @@ pub(crate) fn text(
     )
 }
 
-struct PreparedText {
-    text: String,
-    runs: Vec<TextRun>,
+pub(crate) struct PreparedText {
+    pub text: String,
+    pub runs: Vec<TextRun>,
     links: Vec<Range<usize>>,
     destinations: Vec<usize>,
     mapping: TextMap,
     source_len: usize,
 }
 
-fn prepare(document: &Document, inlines: &[Inline], kind: TextKind) -> PreparedText {
+pub(crate) fn prepare(document: &Document, inlines: &[Inline], kind: TextKind) -> PreparedText {
     let mut text = String::new();
     let mut runs = Vec::with_capacity(inlines.len());
     let mut links = Vec::new();

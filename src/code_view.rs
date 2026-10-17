@@ -159,6 +159,9 @@ impl Element for CodeView {
         window: &mut Window,
         cx: &mut App,
     ) {
+        if !children.is_empty() {
+            self.resources.paint.mark(window);
+        }
         for child in children {
             child.paint(window, cx);
         }

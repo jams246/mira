@@ -9,6 +9,7 @@ use crate::{
     render_image::{self, ImageContent},
     render_text::{self, TextFormat},
     selection::Position,
+    wrapped_text::WrappedText,
 };
 
 pub(crate) fn content(
@@ -21,6 +22,15 @@ pub(crate) fn content(
     cx: &mut App,
 ) -> AnyElement {
     if !inlines.iter().any(|inline| inline.image.is_some()) {
+        if format.kind != crate::render_text::TextKind::Code
+            && inlines
+                .iter()
+                .map(|run| run.text.as_str(&document.source).len())
+                .sum::<usize>()
+                >= 32 * 1024
+        {
+            return WrappedText::new(position, format, resources).into_any_element();
+        }
         return text(document, position, inlines, format, resources);
     }
     let mut output = div()
@@ -84,7 +94,7 @@ fn text(
     format: TextFormat,
     resources: &RenderContext,
 ) -> AnyElement {
-    render_text::text(
+    resources.paint.wrap(render_text::text(
         document,
         position,
         runs,
@@ -92,5 +102,5 @@ fn text(
         Rc::clone(&resources.links),
         Rc::clone(&resources.selection),
         resources.owner,
-    )
+    ))
 }

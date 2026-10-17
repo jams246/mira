@@ -4,12 +4,14 @@ mod navigation;
 use std::{rc::Rc, sync::Arc};
 
 use crate::{
+    content_paint::ContentPaint,
     file::LoadedDocument,
     image_cache::{CacheHandle, ImageCache},
     reader,
     render_context::RenderContext,
     render_table::TableScrolls,
     selection::SelectionHandle,
+    text_cache::{self, TextCache},
     timing::Timing,
 };
 use gpui::{
@@ -48,10 +50,11 @@ pub(crate) struct Viewer {
     follow_bottom: bool,
     pending_anchor: Option<String>,
     link_error: Option<String>,
-    content_marked: bool,
+    content_paint: ContentPaint,
     selection: SelectionHandle,
     table_scrolls: TableScrolls,
     images: Option<CacheHandle>,
+    texts: Option<text_cache::CacheHandle>,
 }
 
 impl Viewer {
@@ -71,10 +74,11 @@ impl Viewer {
             follow_bottom: false,
             pending_anchor: None,
             link_error: None,
-            content_marked: false,
+            content_paint: ContentPaint::new(timing),
             selection: SelectionHandle::default(),
             table_scrolls: TableScrolls::default(),
             images: None,
+            texts: None,
         }
     }
 
@@ -165,21 +169,23 @@ impl Render for Viewer {
                 .images
                 .get_or_insert_with(|| ImageCache::new(Arc::clone(loaded), window.current_view()));
             images.borrow_mut().begin_frame();
-            let paint_marker = if !self.content_marked && !loaded.document.blocks.is_empty() {
-                self.content_marked = true;
-                let timing = self.timing;
-                window.on_next_frame(move |_, _| timing.mark("first_content_callback"));
-                self.timing.paint_marker("first_content_paint")
-            } else {
-                None
-            };
+            let texts = self
+                .texts
+                .get_or_insert_with(|| TextCache::new(Arc::clone(loaded), window.current_view()));
             let activate_link = Rc::new(cx.processor(Self::activate_link));
             return root
                 .when_some(self.link_error.clone(), |root, message| {
                     root.child(div().p_3().text_color(rgb(0xa02020)).child(message))
                 })
                 .when(loaded.document.blocks.is_empty(), |root| {
-                    root.child(div().p_8().child("This Markdown file is empty."))
+                    root.child(
+                        self.content_paint.wrap(
+                            div()
+                                .p_8()
+                                .child("This Markdown file is empty.")
+                                .into_any_element(),
+                        ),
+                    )
                 })
                 .child(reader::viewport(
                     Arc::clone(loaded),
@@ -190,18 +196,25 @@ impl Render for Viewer {
                         selection: Rc::clone(&self.selection),
                         tables: Rc::clone(&self.table_scrolls),
                         images: Rc::clone(images),
+                        texts: Rc::clone(texts),
+                        cell: None,
+                        paint: self.content_paint.clone(),
                         owner: window.current_view(),
                         width: (f32::from(window.viewport_size().width) - 64.).max(1.),
                     },
-                ))
-                .when_some(paint_marker, |root, marker| root.child(marker));
+                ));
         }
         root.justify_center()
             .items_center()
             .p_8()
             .gap_3()
             .child(div().text_3xl().child("MIRA"))
-            .child(self.message.clone())
+            .child(if self.message.starts_with("Cannot open ") {
+                self.content_paint
+                    .wrap(div().child(self.message.clone()).into_any_element())
+            } else {
+                div().child(self.message.clone()).into_any_element()
+            })
             .child(
                 div()
                     .id("open")

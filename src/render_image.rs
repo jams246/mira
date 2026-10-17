@@ -42,14 +42,14 @@ pub(crate) fn image(
             );
         }
         ImageStatus::Failed(error) => {
-            return placeholder(
+            return resources.paint.wrap(placeholder(
                 document,
                 position,
                 content.alt,
                 resources,
                 format!("Cannot display image: {error}"),
                 id,
-            );
+            ));
         }
     };
     let alt_len = content
@@ -68,39 +68,41 @@ pub(crate) fn image(
     let up = Rc::clone(&resources.selection);
     let links = Rc::clone(&resources.links);
     let owner = resources.owner;
-    div()
-        .id(id)
-        .flex_none()
-        .w(px(width))
-        .h(px(height))
-        .max_w_full()
-        .when(content.link.is_some(), |image| image.cursor_pointer())
-        .on_mouse_down(MouseButton::Left, move |_, _, cx| {
-            down.borrow_mut().start(position, false);
-            cx.notify(owner);
-        })
-        .on_mouse_move(move |event, _, cx| {
-            if event.pressed_button == Some(MouseButton::Left)
-                && drag.borrow_mut().extend(Position {
-                    byte: position.byte + alt_len,
-                    ..position
-                })
-            {
+    resources.paint.wrap(
+        div()
+            .id(id)
+            .flex_none()
+            .w(px(width))
+            .h(px(height))
+            .max_w_full()
+            .when(content.link.is_some(), |image| image.cursor_pointer())
+            .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                down.borrow_mut().start(position, false);
                 cx.notify(owner);
-            }
-        })
-        .on_click(move |_, window, cx| {
-            if let Some(target) = content.link.filter(|_| up.borrow().is_empty()) {
-                links(target, window, cx);
-            }
-        })
-        .child(
-            img(image.image)
-                .w(px(width))
-                .h(px(height))
-                .when(selected, |image| image.opacity(0.65)),
-        )
-        .into_any_element()
+            })
+            .on_mouse_move(move |event, _, cx| {
+                if event.pressed_button == Some(MouseButton::Left)
+                    && drag.borrow_mut().extend(Position {
+                        byte: position.byte + alt_len,
+                        ..position
+                    })
+                {
+                    cx.notify(owner);
+                }
+            })
+            .on_click(move |_, window, cx| {
+                if let Some(target) = content.link.filter(|_| up.borrow().is_empty()) {
+                    links(target, window, cx);
+                }
+            })
+            .child(
+                img(image.image)
+                    .w(px(width))
+                    .h(px(height))
+                    .when(selected, |image| image.opacity(0.65)),
+            )
+            .into_any_element(),
+    )
 }
 
 fn placeholder(

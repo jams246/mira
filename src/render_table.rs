@@ -65,6 +65,7 @@ pub(crate) fn row(
         .take(columns.end)
         .skip(columns.start)
     {
+        resources.cell = Some(column);
         resources.width = if column == 0 { 222. } else { 223. };
         let align = document.tables[*table]
             .alignments

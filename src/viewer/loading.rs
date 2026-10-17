@@ -10,13 +10,14 @@ impl Viewer {
         self.generation = self.generation.wrapping_add(1);
         let generation = self.generation;
         self.loaded = None;
+        self.texts = None;
         if let Some(images) = self.images.take() {
             images.borrow_mut().clear(window, cx);
         }
         self.link_error = None;
         self.pending_anchor = None;
         self.follow_bottom = false;
-        self.content_marked = false;
+        self.content_paint = crate::content_paint::ContentPaint::new(self.timing);
         self.selection = Default::default();
         self.table_scrolls = Default::default();
         self.message = format!("Opening {}...", path.display());

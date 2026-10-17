@@ -79,7 +79,11 @@ pub(crate) fn block(
             ));
         }
         BlockKind::Rule => {
-            content = content.my_3().h(px(1.)).bg(rgb(0xd8d8d8));
+            content = content.child(
+                resources
+                    .paint
+                    .wrap(div().my_3().h(px(1.)).bg(rgb(0xd8d8d8)).into_any_element()),
+            );
         }
         BlockKind::Code { runs, .. } => {
             let text = if resources.loaded.code.contains_key(&index) {
