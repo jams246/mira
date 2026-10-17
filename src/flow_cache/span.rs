@@ -8,7 +8,7 @@ use crate::{
     text_cache::{self, IntrinsicWidth, Source, TextCache},
 };
 
-pub(crate) const MIN_SPAN_BYTES: usize = 32 * 1024;
+pub(crate) const MIN_SPAN_BYTES: usize = text_cache::MIN_ASYNC_BYTES;
 
 pub(crate) struct Span {
     pub piece: usize,

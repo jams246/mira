@@ -137,6 +137,11 @@ impl Element for WrappedText {
             cx,
         );
         let entry = entry.borrow();
+        if let Some(layouts) = &entry.latest_layouts
+            && let Err(error) = window.text_system().retain_layouts(layouts)
+        {
+            eprintln!("Cannot reuse native text layout: {error}");
+        }
         let start = entry
             .chunks
             .partition_point(|chunk| chunk.row + chunk.rows < first);
@@ -145,6 +150,11 @@ impl Element for WrappedText {
             .iter()
             .take_while(|chunk| chunk.row <= last)
         {
+            if let Some(layouts) = &chunk.layouts
+                && let Err(error) = window.text_system().retain_layouts(layouts)
+            {
+                eprintln!("Cannot reuse native text layout: {error}");
+            }
             let slice = entry.slice(
                 &self.resources.loaded.document,
                 self.source,

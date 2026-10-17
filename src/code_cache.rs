@@ -5,7 +5,7 @@ pub(crate) use shape::{native, prepare};
 
 use std::{cell::RefCell, collections::HashMap, ops::Range, rc::Rc, sync::Arc};
 
-use gpui::{App, EntityId, Window};
+use gpui::{App, BackgroundTextLayouts, EntityId, Window};
 use mira::code_layout::{CodeLayout, CodeLine};
 
 use crate::{file::LoadedDocument, timing::Timing};
@@ -14,7 +14,7 @@ pub(crate) type CacheHandle = Rc<RefCell<CodeCache>>;
 pub(crate) type EntryHandle = Rc<RefCell<Entry>>;
 pub(crate) const MIN_UNICODE_BYTES: usize = 2048;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct Source {
     pub block: usize,
     pub row: usize,
@@ -28,6 +28,7 @@ pub(crate) struct Chunk {
     pub x: f32,
     pub local_x: f32,
     pub width: f32,
+    pub layouts: Option<Arc<BackgroundTextLayouts>>,
 }
 
 pub(crate) struct Entry {
@@ -37,6 +38,7 @@ pub(crate) struct Entry {
     pub width: f32,
     pub complete: bool,
     pub error: Option<String>,
+    pub latest_layouts: Option<Arc<BackgroundTextLayouts>>,
     cursor: usize,
     context_start: usize,
     context_column: usize,
@@ -98,6 +100,7 @@ impl CodeCache {
             width: 0.,
             complete: line.bytes.is_empty(),
             error: None,
+            latest_layouts: None,
             cursor: line.bytes.start,
             context_start: line.bytes.start,
             context_column: 0,

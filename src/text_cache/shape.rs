@@ -25,6 +25,7 @@ pub(super) struct Batch {
     pub len: usize,
     pub intrinsic: IntrinsicWidth,
     pub natural_width: f32,
+    pub retain_layouts: bool,
 }
 
 pub(super) fn batch(
@@ -50,21 +51,22 @@ pub(super) fn batch(
         rows: input.row,
         intrinsic: input.intrinsic,
         natural_width: input.natural_width,
+        retain_layouts: false,
     };
     let start = Instant::now();
     while result.cursor < result.len && result.rows < input.target {
-        let mut budget = 1024;
+        let mut end =
+            result
+                .index
+                .floor_boundary(document, runs, (result.cursor + 1024).min(result.len));
         let (end, boundaries) = loop {
-            let end = result.index.floor_boundary(
-                document,
-                runs,
-                (result.cursor + budget).min(result.len),
-            );
             let slice = result
                 .index
                 .slice(document, runs, result.context_start..end);
             let prepared =
                 render_text::prepare(document, &slice, input.config.kind, Palette::light());
+            let native_start = Instant::now();
+            let native_timing = Timing::start();
             let lines = system
                 .shape_text(
                     prepared.text.into(),
@@ -74,6 +76,8 @@ pub(super) fn batch(
                     None,
                 )
                 .map_err(|error| error.to_string())?;
+            native_timing.mark("text_native_shape");
+            result.retain_layouts |= native_start.elapsed() >= Duration::from_millis(4);
             let mut boundaries = Vec::new();
             let mut base = 0;
             for line in &lines {
@@ -106,8 +110,13 @@ pub(super) fn batch(
             {
                 break (end, boundaries);
             }
-            // One indivisible cluster may require a larger native call to preserve its glyphs.
-            budget = budget.saturating_mul(2).min(result.len - result.cursor);
+            // Skip unbreakable source instead of repeatedly shaping its growing prefixes.
+            let word_end = result.index.word_end(document, runs, end..result.len);
+            end = result.index.floor_boundary(
+                document,
+                runs,
+                word_end.saturating_add(1024).min(result.len),
+            );
         };
         let final_chunk = end == result.len;
         let committed = if final_chunk {
@@ -126,6 +135,7 @@ pub(super) fn batch(
             row: result.rows,
             rows,
             skip_rows,
+            layouts: None,
         });
         result.context_start += boundaries.iter().rev().nth(1).copied().unwrap_or(0);
         result.cursor = committed;

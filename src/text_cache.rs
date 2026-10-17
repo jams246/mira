@@ -8,7 +8,7 @@ pub(crate) use source::Source;
 
 use std::{cell::RefCell, collections::HashMap, ops::Range, rc::Rc, sync::Arc};
 
-use gpui::{App, EntityId, Window};
+use gpui::{App, BackgroundTextLayouts, EntityId, Window};
 use mira::{
     document::{Document, Inline},
     inline_index::InlineIndex,
@@ -18,6 +18,7 @@ use crate::{file::LoadedDocument, render_text::TextKind, timing::Timing};
 
 pub(crate) type CacheHandle = Rc<RefCell<TextCache>>;
 pub(crate) type EntryHandle = Rc<RefCell<Entry>>;
+pub(crate) const MIN_ASYNC_BYTES: usize = 2048;
 
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) struct Config {
@@ -32,6 +33,7 @@ pub(crate) struct Chunk {
     pub row: usize,
     pub rows: usize,
     pub skip_rows: usize,
+    pub layouts: Option<Arc<BackgroundTextLayouts>>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -58,6 +60,7 @@ pub(crate) struct Entry {
     target: usize,
     active: bool,
     scheduled: bool,
+    pub latest_layouts: Option<Arc<BackgroundTextLayouts>>,
 }
 
 impl Entry {
@@ -174,6 +177,7 @@ impl TextCache {
             target: 0,
             active: false,
             scheduled: false,
+            latest_layouts: None,
         }));
         cache.entries.insert(source, Rc::clone(&entry));
         entry

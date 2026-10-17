@@ -9,7 +9,7 @@ use crate::inline_index::InlineIndex;
 use crate::document::Text;
 
 /// Small code blocks retain ordinary native text layout.
-pub const MIN_INDEXED_BYTES: usize = 32 * 1024;
+pub const MIN_INDEXED_BYTES: usize = 2048;
 
 /// One physical code line, excluding its terminating newline.
 #[derive(Clone, Debug)]
@@ -175,7 +175,40 @@ impl CodeLayout {
     pub fn floor_boundary(&self, document: &Document, runs: &[Inline], byte: usize) -> usize {
         self.runs.floor_boundary(document, runs, byte)
     }
+
+    /// Scans bounded source windows through the next whitespace or range end.
+    pub fn word_end(&self, document: &Document, runs: &[Inline], range: Range<usize>) -> usize {
+        self.runs.word_end(document, runs, range)
+    }
 }
 
 #[cfg(test)]
 mod tests;
+
+#[test]
+fn two_kib_unicode_code_is_indexed_before_native_viewport_layout() {
+    let raw = "é".repeat(1024);
+    let document = crate::markdown::parse(format!("```\n{raw}\n```"));
+    let layouts = index(&document);
+    let line = layouts[&0].line(0).expect("Indexed Unicode line");
+    assert_eq!(line.bytes.len(), 2048);
+    assert!(!line.ascii);
+    let smaller = crate::markdown::parse(format!("```\n{}\n```", "é".repeat(1023)));
+    assert!(index(&smaller).is_empty());
+}
+
+#[test]
+fn code_word_scan_skips_a_complete_combining_sequence_and_preserves_space() {
+    let raw = format!("a{} after", "\u{301}".repeat(16_384));
+    let document = crate::markdown::parse(format!("```\n{raw}\n```"));
+    let layouts = index(&document);
+    let BlockKind::Code { runs, .. } = &document.blocks[0].kind else {
+        panic!("code")
+    };
+    assert_eq!(layouts[&0].word_end(&document, runs, 895..raw.len()), 32770);
+    assert_eq!(layouts[&0].word_end(&document, runs, 895..896), 895);
+    assert_eq!(
+        layouts[&0].word_end(&document, runs, raw.len() - 2..raw.len()),
+        raw.len()
+    );
+}

@@ -8,6 +8,7 @@ use crate::{
     render_context::RenderContext,
     render_text::{self, TextFormat},
     selection::Position,
+    text_cache::MIN_ASYNC_BYTES,
     wrapped_text::WrappedText,
 };
 
@@ -26,7 +27,7 @@ pub(crate) fn content(
                 .iter()
                 .map(|run| run.text.as_str(&document.source).len())
                 .sum::<usize>()
-                >= 32 * 1024
+                >= MIN_ASYNC_BYTES
         {
             return WrappedText::new(position, format, resources).into_any_element();
         }
@@ -58,7 +59,7 @@ fn needs_flow(document: &Document, inlines: &[Inline]) -> bool {
             .iter()
             .map(|run| run.text.as_str(&document.source).len())
             .sum::<usize>()
-            >= 32 * 1024
+            >= MIN_ASYNC_BYTES
 }
 
 pub(crate) fn text(
@@ -89,6 +90,18 @@ mod tests {
             runs.iter()
                 .all(|run| run.text.as_str(&document.source).is_empty())
         );
+        assert!(needs_flow(&document, runs));
+    }
+
+    #[test]
+    fn combining_text_below_the_old_cutoff_uses_incremental_flow() {
+        let document = markdown::parse(format!(
+            "![left](left.png) a{} after",
+            "\u{301}".repeat(15000)
+        ));
+        let BlockKind::Paragraph(runs) = &document.blocks[0].kind else {
+            panic!("paragraph")
+        };
         assert!(needs_flow(&document, runs));
     }
 }

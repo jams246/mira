@@ -1,29 +1,89 @@
 use std::time::{Duration, Instant};
 
-use gpui::{App, Window};
-
 use super::*;
+use shape::{Progress, Step};
+
+struct Batch {
+    progress: Progress,
+    chunks: Vec<Chunk>,
+    error: Option<String>,
+    expensive: bool,
+}
 
 pub(super) fn schedule(cache: &CacheHandle, window: &mut Window, _: &mut App) {
-    let weak = Rc::downgrade(cache);
+    let weak_cache = Rc::downgrade(cache);
     window.on_next_frame(move |window, cx| {
-        let Some(cache) = weak.upgrade() else { return };
-        let mut cache = cache.borrow_mut();
-        cache.scheduled = false;
-        let pending = pending(&cache.order, cache.next, &cache.entries);
-        let advanced = advance(&cache.entries, &pending, |source, state| {
-            shape::step(&cache.loaded, source, state, window.text_system())
-        });
-        if let Some(index) = advanced {
-            cache.next = (index + 1) % cache.order.len();
-        }
+        let callback = Timing::start();
+        let Some(handle) = weak_cache.upgrade() else {
+            return;
+        };
+        let mut cache = handle.borrow_mut();
+        let demand = pending(&cache.order, cache.next, &cache.entries);
+        let Some(&(index, source)) = demand.first() else {
+            cache.scheduled = false;
+            return;
+        };
+        let entry = Rc::clone(&cache.entries[&source]);
+        let weak_entry = Rc::downgrade(&entry);
+        let state = entry.borrow();
+        let expected = Progress::from(&*state);
+        let input = expected.clone();
+        let target = state.target;
+        drop(state);
+        cache.next = (index + 1) % cache.order.len();
         for entry in cache.entries.values() {
             entry.borrow_mut().active = false;
         }
-        if advanced.is_some() {
-            cx.notify(cache.owner);
-        }
+        let loaded = Arc::clone(&cache.loaded);
+        drop(cache);
+        let system = window.text_system().background_shaper();
+        let task = cx.background_executor().spawn(async move {
+            let timing = Timing::start();
+            let batch = advance(input, target, |state| {
+                shape::step(&loaded, source, state, &system)
+            });
+            let layouts = Arc::new(system.cached_layouts());
+            timing.mark("code_checkpoint_batch");
+            (batch, layouts)
+        });
+        cx.spawn(async move |cx| {
+            let (batch, layouts) = task.await;
+            let _ = cx.update(|cx| {
+                let timing = Timing::start();
+                let Some(cache) = weak_cache.upgrade() else {
+                    return;
+                };
+                let mut cache = cache.borrow_mut();
+                cache.scheduled = false;
+                if let Some(entry) = weak_entry.upgrade()
+                    && current(&cache.entries, source, &entry, &expected)
+                {
+                    let mut state = entry.borrow_mut();
+                    publish(&mut state, batch, layouts);
+                    if state.complete {
+                        state.timing.mark("code_layout_ready");
+                    }
+                }
+                let owner = cache.owner;
+                drop(cache);
+                cx.notify(owner);
+                timing.mark("code_checkpoint_publish");
+            });
+        })
+        .detach();
+        callback.mark("code_checkpoint_callback");
     });
+}
+
+fn current(
+    entries: &HashMap<Source, EntryHandle>,
+    source: Source,
+    entry: &EntryHandle,
+    expected: &Progress,
+) -> bool {
+    entries.get(&source).is_some_and(|current| {
+        Rc::ptr_eq(current, entry) && Progress::from(&*current.borrow()) == *expected
+    })
 }
 
 fn pending(
@@ -43,76 +103,56 @@ fn pending(
 }
 
 fn advance(
-    entries: &HashMap<Source, EntryHandle>,
-    pending: &[(usize, Source)],
-    mut step: impl FnMut(Source, &mut Entry) -> Result<(), String>,
-) -> Option<usize> {
+    mut progress: Progress,
+    target: f32,
+    mut step: impl FnMut(&mut Progress) -> Result<Step, String>,
+) -> Batch {
     let start = Instant::now();
-    let mut advanced = None;
-    for &(index, source) in pending.iter().cycle().take(64) {
-        let mut state = entries[&source].borrow_mut();
-        if state.complete || state.width >= state.target {
-            continue;
+    let mut batch = Batch {
+        progress: progress.clone(),
+        chunks: Vec::new(),
+        error: None,
+        expensive: false,
+    };
+    for _ in 0..64 {
+        if progress.complete || progress.width >= target {
+            break;
         }
         let timing = Timing::start();
-        if let Err(error) = step(source, &mut state) {
-            state.error = Some(error);
-            state.complete = true;
+        match step(&mut progress) {
+            Ok(step) => {
+                batch.expensive |= step.expensive;
+                batch.chunks.push(step.chunk);
+            }
+            Err(error) => {
+                batch.error = Some(error);
+                progress.complete = true;
+            }
         }
         timing.mark("code_checkpoint_step");
-        if state.complete {
-            state.timing.mark("code_layout_ready");
-        }
-        advanced = Some(index);
-        if start.elapsed() >= Duration::from_millis(4) {
+        if batch.error.is_some() || start.elapsed() >= Duration::from_millis(4) {
             break;
         }
     }
-    advanced
+    batch.progress = progress;
+    batch
+}
+
+fn publish(state: &mut Entry, mut batch: Batch, layouts: Arc<gpui::BackgroundTextLayouts>) {
+    if batch.expensive {
+        for chunk in &mut batch.chunks {
+            chunk.layouts = Some(Arc::clone(&layouts));
+        }
+    }
+    state.latest_layouts = Some(layouts);
+    state.chunks.extend(batch.chunks);
+    state.width = batch.progress.width;
+    state.complete = batch.progress.complete;
+    state.cursor = batch.progress.cursor;
+    state.context_start = batch.progress.context_start;
+    state.context_column = batch.progress.context_column;
+    state.error = batch.error;
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn visible_demand_after_sixty_four_historical_rows_actually_advances() {
-        let order = (0..129)
-            .map(|row| Source { block: 0, row })
-            .collect::<Vec<_>>();
-        let entries = order
-            .iter()
-            .map(|source| {
-                (
-                    *source,
-                    Rc::new(RefCell::new(Entry {
-                        font_size: 14.,
-                        line: 0..1000,
-                        chunks: Vec::new(),
-                        width: 0.,
-                        complete: false,
-                        error: None,
-                        cursor: 0,
-                        context_start: 0,
-                        context_column: 0,
-                        target: 5.,
-                        active: source.row == 100,
-                        timing: Timing::start(),
-                    })),
-                )
-            })
-            .collect::<HashMap<_, _>>();
-        let demand = pending(&order, 0, &entries);
-        let advanced = advance(&entries, &demand, |source, state| {
-            assert_eq!(source.row, 100);
-            state.width += 1.;
-            state.cursor += 1;
-            Ok(())
-        });
-        assert_eq!(advanced, Some(100));
-        let visible = entries[&order[100]].borrow();
-        assert_eq!(visible.width, 5.);
-        assert_eq!(visible.cursor, 5);
-        assert_eq!(entries[&order[0]].borrow().cursor, 0);
-    }
-}
+mod tests;

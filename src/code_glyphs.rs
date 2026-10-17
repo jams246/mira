@@ -36,6 +36,11 @@ impl CodeGlyphs {
         font_size: Pixels,
         window: &mut Window,
     ) -> Self {
+        if let Some(layouts) = &entry.latest_layouts
+            && let Err(error) = window.text_system().retain_layouts(layouts)
+        {
+            eprintln!("Cannot reuse native code layout: {error}");
+        }
         let mask = window.content_mask().bounds;
         let left = f32::from((mask.left() - bounds.left()).max(px(0.))) - 256.;
         let right = f32::from(mask.right() - bounds.left()) + 256.;
@@ -48,6 +53,11 @@ impl CodeGlyphs {
             .take_while(|chunk| chunk.x <= right)
             .filter(|_| entry.complete && entry.error.is_none() || entry.width >= left)
             .map(|chunk| {
+                if let Some(layouts) = &chunk.layouts
+                    && let Err(error) = window.text_system().retain_layouts(layouts)
+                {
+                    eprintln!("Cannot reuse native code layout: {error}");
+                }
                 let (text, mapping) = code_cache::prepare(&resources.loaded, source, chunk);
                 let line = code_cache::native(window.text_system(), text, font_size.into());
                 Piece {
