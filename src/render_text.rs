@@ -48,7 +48,6 @@ pub(crate) fn text(
         text,
         runs,
         links,
-        destinations,
         mapping,
         source_len,
     } = prepare(document, inlines, format.kind, resources.palette);
@@ -80,7 +79,7 @@ pub(crate) fn text(
             mapping,
             align: format.align,
             inline: format.inline,
-            links: links.into_iter().zip(destinations).collect(),
+            links,
             activate_link: Rc::clone(&resources.links),
             resources: resources.clone(),
             source_len,
@@ -91,8 +90,7 @@ pub(crate) fn text(
 pub(crate) struct PreparedText {
     pub text: String,
     pub runs: Vec<TextRun>,
-    links: Vec<Range<usize>>,
-    destinations: Vec<usize>,
+    links: Vec<(Range<usize>, usize)>,
     mapping: TextMap,
     source_len: usize,
 }
@@ -106,7 +104,6 @@ pub(crate) fn prepare(
     let mut text = String::new();
     let mut runs = Vec::with_capacity(inlines.len());
     let mut links = Vec::new();
-    let mut destinations = Vec::new();
     for inline in inlines {
         let start = text.len();
         text.push_str(inline.text.as_str(&document.source));
@@ -141,8 +138,7 @@ pub(crate) fn prepare(
             }),
         });
         if let Some(target) = inline.link {
-            links.push(start..text.len());
-            destinations.push(target);
+            links.push((start..text.len(), target));
         }
     }
     let source_len = text.len();
@@ -155,7 +151,7 @@ pub(crate) fn prepare(
             run.len = mapping.to_display(end) - mapping.to_display(byte);
             byte = end;
         }
-        for range in &mut links {
+        for (range, _) in &mut links {
             *range = mapping.to_display(range.start)..mapping.to_display(range.end);
         }
     }
@@ -163,7 +159,6 @@ pub(crate) fn prepare(
         text,
         runs,
         links,
-        destinations,
         mapping,
         source_len,
     }

@@ -46,7 +46,7 @@ fn visible_demand_after_sixty_four_historical_rows_actually_advances() {
         .map(|source| (*source, entry(source.row == 100)))
         .collect::<HashMap<_, _>>();
     let demand = pending(&order, 0, &entries);
-    assert_eq!(demand, [(100, order[100])]);
+    assert_eq!(demand, Some((100, order[100])));
     let result = advance(Progress::from(&*entries[&order[100]].borrow()), 5., step);
     assert_eq!(result.progress.width, 5.);
     assert_eq!(result.progress.cursor, 5);
@@ -64,14 +64,21 @@ fn round_robin_skips_inactive_rows_without_losing_visible_demand() {
         .iter()
         .map(|source| (*source, entry(source.row != 1)))
         .collect::<HashMap<_, _>>();
-    assert_eq!(
-        pending(&order, 2, &entries),
-        [(2, order[2]), (3, order[3]), (0, order[0])]
-    );
+    assert_eq!(pending(&order, 2, &entries), Some((2, order[2])));
     entries[&order[2]].borrow_mut().complete = true;
-    assert_eq!(pending(&order, 3, &entries)[0], (3, order[3]));
+    assert_eq!(pending(&order, 3, &entries), Some((3, order[3])));
+    assert_eq!(pending(&order, 0, &entries), Some((0, order[0])));
     entries[&order[0]].borrow_mut().active = false;
-    assert_eq!(pending(&order, 0, &entries), [(3, order[3])]);
+    assert_eq!(pending(&order, 0, &entries), Some((3, order[3])));
+    entries[&order[3]].borrow_mut().width = 5.;
+    assert_eq!(pending(&order, 0, &entries), None);
+}
+
+#[test]
+fn empty_or_missing_entries_have_no_pending_work() {
+    let entries = HashMap::new();
+    assert_eq!(pending(&[], 0, &entries), None);
+    assert_eq!(pending(&[Source { block: 0, row: 0 }], 0, &entries), None);
 }
 
 #[test]

@@ -10,7 +10,7 @@ struct Batch {
     expensive: bool,
 }
 
-pub(super) fn schedule(cache: &CacheHandle, window: &mut Window, _: &mut App) {
+pub(super) fn schedule(cache: &CacheHandle, window: &mut Window) {
     let weak_cache = Rc::downgrade(cache);
     window.on_next_frame(move |window, cx| {
         let callback = Timing::start();
@@ -18,8 +18,7 @@ pub(super) fn schedule(cache: &CacheHandle, window: &mut Window, _: &mut App) {
             return;
         };
         let mut cache = handle.borrow_mut();
-        let demand = pending(&cache.order, cache.next, &cache.entries);
-        let Some(&(index, source)) = demand.first() else {
+        let Some((index, source)) = pending(&cache.order, cache.next, &cache.entries) else {
             cache.scheduled = false;
             return;
         };
@@ -90,16 +89,13 @@ fn pending(
     order: &[Source],
     next: usize,
     entries: &HashMap<Source, EntryHandle>,
-) -> Vec<(usize, Source)> {
-    (0..order.len())
-        .filter_map(|offset| {
-            let index = (next + offset) % order.len();
-            let source = order[index];
-            let state = entries.get(&source)?.borrow();
-            (state.active && !state.complete && state.width < state.target)
-                .then_some((index, source))
-        })
-        .collect()
+) -> Option<(usize, Source)> {
+    (0..order.len()).find_map(|offset| {
+        let index = (next + offset) % order.len();
+        let source = order[index];
+        let state = entries.get(&source)?.borrow();
+        (state.active && !state.complete && state.width < state.target).then_some((index, source))
+    })
 }
 
 fn advance(

@@ -59,8 +59,6 @@ pub(crate) struct Entry {
     intrinsic: IntrinsicWidth,
     natural_width: f32,
     timing: Timing,
-    target: usize,
-    active: bool,
     scheduled: bool,
     pub latest_layouts: Option<Arc<BackgroundTextLayouts>>,
 }
@@ -176,8 +174,6 @@ impl TextCache {
             error,
             natural_width: 0.,
             timing: Timing::start(),
-            target: 0,
-            active: false,
             scheduled: false,
             latest_layouts: None,
         }));
@@ -194,8 +190,6 @@ impl TextCache {
         cx: &mut App,
     ) {
         let mut state = entry.borrow_mut();
-        state.target = target;
-        state.active = true;
         if state.scheduled || state.complete || (state.index.is_some() && state.rows >= target) {
             return;
         }
@@ -206,6 +200,7 @@ impl TextCache {
             entry,
             Arc::clone(&cache.loaded),
             source,
+            target,
             cache.owner,
             window,
             cx,

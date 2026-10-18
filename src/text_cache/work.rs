@@ -4,6 +4,7 @@ pub(super) fn schedule(
     entry: &EntryHandle,
     loaded: Arc<LoadedDocument>,
     source: Source,
+    target: usize,
     owner: EntityId,
     window: &mut Window,
     cx: &mut App,
@@ -11,14 +12,8 @@ pub(super) fn schedule(
     // Start during prepaint to avoid an extra frame wait for every background batch.
     let weak = Rc::downgrade(entry);
     let callback = Timing::start();
-    let mut state = entry.borrow_mut();
-    state.scheduled = false;
-    if !state.active || state.complete || (state.index.is_some() && state.rows >= state.target) {
-        return;
-    }
-    state.active = false;
+    let state = entry.borrow();
     let Some(index) = state.index.clone() else {
-        state.scheduled = true;
         drop(state);
         let task = cx.background_executor().spawn(async move {
             let timing = Timing::start();
@@ -47,11 +42,10 @@ pub(super) fn schedule(
         cursor: state.cursor,
         context_start: state.context_start,
         row: state.rows,
-        target: state.target,
+        target,
         intrinsic: state.intrinsic,
         natural_width: state.natural_width,
     };
-    state.scheduled = true;
     drop(state);
     let system = window.text_system().background_shaper();
     let task = cx.background_executor().spawn(async move {

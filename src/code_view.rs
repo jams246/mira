@@ -135,7 +135,7 @@ impl Element for CodeView {
                 } else {
                     f32::from((mask.right() - bounds.left()).max(px(0.))) + 256.
                 };
-                CodeCache::demand(&self.resources.codes, &entry, target, window, cx);
+                CodeCache::demand(&self.resources.codes, &entry, target, window);
                 unicode.push(CodeGlyphs::prepare(
                     &self.resources,
                     source,

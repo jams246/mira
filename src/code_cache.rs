@@ -5,7 +5,7 @@ pub(crate) use shape::{native, prepare};
 
 use std::{cell::RefCell, collections::HashMap, ops::Range, rc::Rc, sync::Arc};
 
-use gpui::{App, BackgroundTextLayouts, EntityId, Window};
+use gpui::{BackgroundTextLayouts, EntityId, Window};
 use mira::code_layout::{CodeLayout, CodeLine};
 
 use crate::{file::LoadedDocument, timing::Timing};
@@ -145,7 +145,6 @@ impl CodeCache {
         entry: &EntryHandle,
         target: f32,
         window: &mut Window,
-        cx: &mut App,
     ) {
         let mut state = entry.borrow_mut();
         state.target = target.max(0.);
@@ -158,7 +157,7 @@ impl CodeCache {
             return;
         }
         cache.borrow_mut().scheduled = true;
-        work::schedule(cache, window, cx);
+        work::schedule(cache, window);
     }
 }
 

@@ -42,7 +42,13 @@ pub(crate) async fn run(window: WindowHandle<Viewer>, cx: &mut AsyncApp) {
     let entry = TextCache::request(&cache, source, config, Some(Arc::clone(&index)));
     helper
         .update(cx, |_, window, cx| {
+            TextCache::demand(&cache, &entry, source, 0, window, cx);
+            assert!(!entry.borrow().scheduled);
+            TextCache::demand(&cache, &entry, source, 1, window, cx);
+            assert!(entry.borrow().scheduled);
             TextCache::demand(&cache, &entry, source, usize::MAX, window, cx);
+            TextCache::demand(&cache, &entry, source, 0, window, cx);
+            assert!(entry.borrow().scheduled);
             // No subsequent frame can start a deferred shaping job for this window.
             window.remove_window();
         })
@@ -57,6 +63,8 @@ pub(crate) async fn run(window: WindowHandle<Viewer>, cx: &mut AsyncApp) {
         let previous = entry.borrow().rows;
         window
             .update(cx, |_, window, cx| {
+                TextCache::demand(&cache, &entry, source, previous, window, cx);
+                assert!(!entry.borrow().scheduled);
                 TextCache::demand(&cache, &entry, source, usize::MAX, window, cx);
             })
             .unwrap();
@@ -116,6 +124,12 @@ pub(crate) async fn run(window: WindowHandle<Viewer>, cx: &mut AsyncApp) {
         }
         assert_eq!(row, expected_rows);
     }
+    window
+        .update(cx, |_, window, cx| {
+            TextCache::demand(&cache, &entry, source, usize::MAX, window, cx);
+            assert!(!entry.borrow().scheduled);
+        })
+        .unwrap();
     drop(entry);
     let pending = TextCache::request(
         &cache,

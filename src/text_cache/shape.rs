@@ -17,7 +17,6 @@ pub(super) struct Input {
 }
 
 pub(super) struct Batch {
-    pub index: Arc<InlineIndex>,
     pub chunks: Vec<Chunk>,
     pub cursor: usize,
     pub context_start: usize,
@@ -44,7 +43,6 @@ pub(super) fn batch(
     }
     let mut result = Batch {
         len: range.end,
-        index,
         chunks: Vec::new(),
         cursor: input.cursor,
         context_start: input.context_start,
@@ -55,14 +53,9 @@ pub(super) fn batch(
     };
     let start = Instant::now();
     while result.cursor < result.len && result.rows < input.target {
-        let mut end =
-            result
-                .index
-                .floor_boundary(document, runs, (result.cursor + 1024).min(result.len));
+        let mut end = index.floor_boundary(document, runs, (result.cursor + 1024).min(result.len));
         let (end, boundaries) = loop {
-            let slice = result
-                .index
-                .slice(document, runs, result.context_start..end);
+            let slice = index.slice(document, runs, result.context_start..end);
             let prepared =
                 render_text::prepare(document, &slice, input.config.kind, Palette::light());
             let native_start = Instant::now();
@@ -111,8 +104,8 @@ pub(super) fn batch(
                 break (end, boundaries);
             }
             // Skip unbreakable source instead of repeatedly shaping its growing prefixes.
-            let word_end = result.index.word_end(document, runs, end..result.len);
-            end = result.index.floor_boundary(
+            let word_end = index.word_end(document, runs, end..result.len);
+            end = index.floor_boundary(
                 document,
                 runs,
                 word_end.saturating_add(1024).min(result.len),

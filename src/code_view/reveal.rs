@@ -54,7 +54,7 @@ pub(super) fn prepare(
                 cx,
             );
         } else if pending {
-            CodeCache::demand(&view.resources.codes, &entry, f32::INFINITY, window, cx);
+            CodeCache::demand(&view.resources.codes, &entry, f32::INFINITY, window);
             return Some(row);
         }
     }
