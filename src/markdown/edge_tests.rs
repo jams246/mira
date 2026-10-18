@@ -176,6 +176,7 @@ fn source_backed_text_ranges_remain_valid_utf8_boundaries() {
         Text::Literal(_) => true,
     };
     for block in &document.blocks {
+        assert!(document.source.get(block.source_range.clone()).is_some());
         let sequences = match &block.kind {
             BlockKind::Paragraph(runs)
             | BlockKind::Heading { runs, .. }
@@ -185,6 +186,12 @@ fn source_backed_text_ranges_remain_valid_utf8_boundaries() {
             BlockKind::Rule => &[],
         };
         assert!(sequences.iter().flatten().all(|run| valid(&run.text)));
+        assert!(
+            sequences
+                .iter()
+                .flatten()
+                .all(|run| { document.source.get(run.source_range.clone()).is_some() })
+        );
         if let BlockKind::Code {
             language: Some(language),
             ..

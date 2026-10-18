@@ -14,6 +14,7 @@ pub(super) struct InlineState {
 
 struct Image {
     target: usize,
+    range: Range<usize>,
     alt: String,
     style: InlineStyle,
     link: Option<usize>,
@@ -41,9 +42,15 @@ impl InlineState {
         }
     }
 
-    pub(super) fn begin_image(&mut self, target: CowStr<'_>, targets: &mut Vec<String>) {
+    pub(super) fn begin_image(
+        &mut self,
+        target: CowStr<'_>,
+        range: Range<usize>,
+        targets: &mut Vec<String>,
+    ) {
         self.images.push(Image {
             target: targets.len(),
+            range,
             alt: String::new(),
             style: self.style,
             link: self.link,
@@ -57,6 +64,7 @@ impl InlineState {
             return None;
         }
         Some(Inline {
+            source_range: image.range,
             text: Text::Literal(image.alt.into_boxed_str()),
             style: image.style,
             link: image.link,
@@ -78,6 +86,7 @@ impl InlineState {
         let mut style = self.style;
         style.code |= code;
         Some(Inline {
+            source_range: range.clone(),
             text: text(source, value, range),
             style,
             link: self.link,

@@ -14,6 +14,7 @@ fn slicing_styled_link_text_retains_utf8_source_ranges_and_metadata() {
     assert_eq!(sliced.len(), 1);
     assert_eq!(sliced[0].text.as_str(&document.source), "東京");
     assert!(matches!(sliced[0].text, Text::Source(_)));
+    assert_eq!(sliced[0].source_range, runs[1].source_range);
     assert_eq!(
         sliced[0].style,
         InlineStyle {
@@ -39,6 +40,7 @@ fn slicing_normalized_literal_copies_only_requested_bytes() {
     };
     let sliced = InlineIndex::new(&document, runs).slice(&document, runs, 1..6);
     assert_eq!(sliced[0].text, Text::Literal("ne tw".into()));
+    assert_eq!(sliced[0].source_range, runs[0].source_range);
     assert!(sliced[0].style.code);
 }
 
@@ -50,6 +52,7 @@ fn slicing_image_alt_preserves_original_image_and_link_destinations() {
     };
     let sliced = InlineIndex::new(&document, runs).slice(&document, runs, 3..6);
     assert_eq!(sliced[0].text.as_str(&document.source), "amp");
+    assert_eq!(sliced[0].source_range, runs[1].source_range);
     assert_eq!(
         sliced[0]
             .image
