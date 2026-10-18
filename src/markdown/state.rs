@@ -87,6 +87,7 @@ impl State {
         range.end = range.end.max(run.source_range.end);
         match kind {
             BlockKind::Paragraph(runs)
+            | BlockKind::RawHtml(runs)
             | BlockKind::Heading { runs, .. }
             | BlockKind::Code { runs, .. } => runs.push(run),
             _ => {}

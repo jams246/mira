@@ -36,7 +36,7 @@ pub(crate) fn block(
         };
     let has_images = match &block.kind {
         BlockKind::Image { .. } => true,
-        BlockKind::Paragraph(runs) | BlockKind::Heading { runs, .. } => {
+        BlockKind::Paragraph(runs) | BlockKind::RawHtml(runs) | BlockKind::Heading { runs, .. } => {
             runs.iter().any(|run| run.image.is_some())
         }
         _ => false,
@@ -46,7 +46,7 @@ pub(crate) fn block(
     }
     let mut margin = 12.;
     match &block.kind {
-        BlockKind::Paragraph(runs) => {
+        BlockKind::Paragraph(runs) | BlockKind::RawHtml(runs) => {
             content = content.child(render_inline::content(
                 document,
                 position,

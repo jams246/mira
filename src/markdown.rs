@@ -27,9 +27,7 @@ pub fn parse(source: String) -> Document {
     for (event, range) in Parser::new_ext(&source, options).into_offset_iter() {
         match event {
             Event::Start(tag) => match tag {
-                Tag::Paragraph | Tag::HtmlBlock => {
-                    state.begin(BlockKind::Paragraph(Vec::with_capacity(1)), range)
-                }
+                Tag::Paragraph => state.begin(BlockKind::Paragraph(Vec::with_capacity(1)), range),
                 Tag::Heading { level, .. } => state.begin(
                     BlockKind::Heading {
                         level: level as u8,
@@ -52,12 +50,14 @@ pub fn parse(source: String) -> Document {
                         range,
                     );
                 }
+                Tag::HtmlBlock => state.begin(BlockKind::RawHtml(Vec::with_capacity(1)), range),
                 Tag::BlockQuote(_) => {
                     state.finish();
                     state.push_context(ContextKind::Quote);
                 }
                 Tag::List(start) => {
                     state.finish_pending_item(range.clone());
+                    state.finish();
                     state.lists.push(start);
                 }
                 Tag::Item => state.begin_item(),

@@ -82,7 +82,7 @@ pub struct Block {
 /// Native-renderable Markdown content.
 #[derive(Debug, PartialEq)]
 pub enum BlockKind {
-    /// A paragraph, including implicit tight-list paragraphs and literal raw HTML.
+    /// A paragraph, including implicit paragraphs in tight lists.
     Paragraph(Vec<Inline>),
     /// A heading with level from one through six.
     Heading {
@@ -118,6 +118,8 @@ pub enum BlockKind {
         /// Cell text and formatting in column order.
         cells: Vec<Vec<Inline>>,
     },
+    /// Raw HTML, displayed literally rather than executed.
+    RawHtml(Vec<Inline>),
 }
 
 /// One shared ancestor in an iterative context arena.

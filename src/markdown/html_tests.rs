@@ -18,8 +18,8 @@ fn html_block_forms_preserve_literal_text_and_line_endings() {
             let document = parse(source.clone());
             assert_eq!(document.source, source);
             assert_eq!(document.blocks.len(), 1);
-            let BlockKind::Paragraph(runs) = &document.blocks[0].kind else {
-                panic!("Expected literal HTML paragraph");
+            let BlockKind::RawHtml(runs) = &document.blocks[0].kind else {
+                panic!("Expected literal HTML block");
             };
             assert_eq!(text(&document, runs), html);
             assert!(runs.iter().all(|run| run.image.is_none()
@@ -48,8 +48,8 @@ fn html_blocks_preserve_quote_and_list_contexts() {
         let document = parse(source.into());
         assert_eq!(document.blocks.len(), 1);
         let block = &document.blocks[0];
-        let BlockKind::Paragraph(runs) = &block.kind else {
-            panic!("Expected literal HTML paragraph");
+        let BlockKind::RawHtml(runs) = &block.kind else {
+            panic!("Expected literal HTML block");
         };
         assert_eq!(text(&document, runs), "<div>\n![東京](image.png)\n</div>\n");
         assert_eq!(document.contexts[block.context.unwrap()].kind, expected);

@@ -55,6 +55,7 @@ pub fn search(
     for (block, item) in document.blocks.iter().enumerate() {
         match &item.kind {
             BlockKind::Paragraph(runs)
+            | BlockKind::RawHtml(runs)
             | BlockKind::Heading { runs, .. }
             | BlockKind::Code { runs, .. } => scanner.runs(runs, block, None, 0),
             BlockKind::TableRow { cells, .. } => {

@@ -21,6 +21,7 @@ impl Source {
     pub(crate) fn runs(self, document: &Document) -> &[Inline] {
         match &document.blocks[self.block].kind {
             BlockKind::Paragraph(runs)
+            | BlockKind::RawHtml(runs)
             | BlockKind::Heading { runs, .. }
             | BlockKind::Image { alt: runs, .. } => runs,
             BlockKind::TableRow { cells, .. } => self

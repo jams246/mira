@@ -69,7 +69,7 @@ fn code_crlf_and_lf_preserve_equal_logical_lines() {
 #[test]
 fn raw_html_remains_literal_text() {
     let document = parse("<script>alert('no execution')</script>\n\ntext <b>bold</b>".into());
-    let BlockKind::Paragraph(raw) = &document.blocks[0].kind else {
+    let BlockKind::RawHtml(raw) = &document.blocks[0].kind else {
         panic!("Expected literal HTML");
     };
     let BlockKind::Paragraph(inline) = &document.blocks[1].kind else {
@@ -179,6 +179,7 @@ fn source_backed_text_ranges_remain_valid_utf8_boundaries() {
         assert!(document.source.get(block.source_range.clone()).is_some());
         let sequences = match &block.kind {
             BlockKind::Paragraph(runs)
+            | BlockKind::RawHtml(runs)
             | BlockKind::Heading { runs, .. }
             | BlockKind::Code { runs, .. }
             | BlockKind::Image { alt: runs, .. } => std::slice::from_ref(runs),

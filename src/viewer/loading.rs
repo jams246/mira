@@ -179,6 +179,7 @@ fn restore_location(
         }
         let runs = match &block.kind {
             BlockKind::Paragraph(runs)
+            | BlockKind::RawHtml(runs)
             | BlockKind::Heading { runs, .. }
             | BlockKind::Code { runs, .. } => Some(runs),
             _ => None,
