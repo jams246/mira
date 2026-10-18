@@ -1,2 +1,2 @@
 # mira
-Markdown Instant Rendering Application
+Markdown Interface and Reading Application
