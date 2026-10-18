@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Product Id="*" Name="MIRA" Language="1033" Version="$(var.Version)"
+             Manufacturer="jams246" UpgradeCode="E6F52016-50BF-41EC-8298-EDAB955A62FA">
+        <Package InstallerVersion="500" Compressed="yes" InstallScope="perUser"
+                 InstallPrivileges="limited" Description="MIRA Markdown reader" />
+        <MajorUpgrade Schedule="afterInstallInitialize"
+                      DowngradeErrorMessage="A newer version of MIRA is already installed." />
+        <MediaTemplate EmbedCab="yes" />
+        <Property Id="INSTALLFOLDER">
+            <RegistrySearch Id="ExistingInstallFolder" Root="HKCU" Key="Software\MIRA"
+                            Name="InstallDir" Type="raw" Win64="yes" />
+        </Property>
+
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="LocalAppDataFolder">
+                <Directory Id="INSTALLFOLDER" Name="MIRA">
+                    <Component Id="Application" Guid="7481E2AB-C30C-43A1-BAB9-D9B760231FDA" Win64="yes">
+                        <File Id="MiraExe" Source="$(var.CargoTargetBinDir)\mira.exe" />
+                        <File Id="License" Source="LICENSE" />
+                        <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder"
+                                  Name="MIRA" Description="Read Markdown files"
+                                  Target="[#MiraExe]" WorkingDirectory="INSTALLFOLDER"
+                                  Icon="MiraIcon" />
+                        <RegistryValue Root="HKCU" Key="Software\MIRA" Name="InstallDir"
+                                       Type="string" Value="[INSTALLFOLDER]" KeyPath="yes" />
+                        <RemoveFolder Id="RemoveInstallFolder" On="uninstall" />
+                    </Component>
+                </Directory>
+            </Directory>
+            <Directory Id="ProgramMenuFolder" />
+        </Directory>
+
+        <Feature Id="ApplicationFeature" Title="MIRA" Level="1">
+            <ComponentRef Id="Application" />
+        </Feature>
+        <Icon Id="MiraIcon" SourceFile="assets\mira.ico" />
+        <Property Id="ARPPRODUCTICON" Value="MiraIcon" />
+        <SetProperty Id="ARPINSTALLLOCATION" Value="[INSTALLFOLDER]" After="CostFinalize" />
+        <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+        <UI>
+            <UIRef Id="WixUI_InstallDir" />
+            <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog"
+                     Value="InstallDirDlg" Order="99">1</Publish>
+            <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog"
+                     Value="WelcomeDlg" Order="99">1</Publish>
+        </UI>
+    </Product>
+</Wix>
